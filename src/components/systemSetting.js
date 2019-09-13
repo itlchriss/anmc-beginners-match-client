@@ -13,14 +13,17 @@ import {
 } from "@material-ui/core";
 import CreateIcon from "@material-ui/icons/Create";
 import { useTable, useRowSelect } from "react-table";
-import { getConstants } from "../api";
+import { apiGetDifficulties } from "../api";
 
 const diveTypes = {
   SINGLE: 1,
   DOUBLE: 2
 };
 
-const initialState = {};
+const initialState = {
+  isFetching: true,
+  difficulties: []
+};
 const TabList = [
   // {
   //   label: "單人",
@@ -47,10 +50,20 @@ function TabPanel(props) {
 const actions = {
   addDifficulty: (store, matchType, diveCode, difficultyFactor) => {},
   editDifficulty: (store, diveCode, difficultyFactor) => {},
-  deleteDifficulty: (store, diveCode) => {}
+  deleteDifficulty: (store, diveCode) => {},
+  toggleFetching: (store, _isFetching) => {
+    console.log('isFetching: ' + _isFetching);
+    store.setState({ isFetching: _isFetching });
+  },
+  storeData: (store, key, data) => {
+    store.setState({ [key]: data });
+  },
+  getData: (store, key) => {
+    return store[key];
+  }
 };
 
-function getTable({ columns, data }) {
+function GetTable({ columns, data}) {
   const {
     getTableProps,
     headerGroups,
@@ -99,8 +112,9 @@ function getTable({ columns, data }) {
   );
 }
 
-function constantList() {
-  const { key, columns: rawColumns, data: rawData } = getConstants();
+function ConstantList() {
+  // const { key, columns: rawColumns, data: rawData } = getConstants();
+  const { key, columns: rawColumns, data: rawData } = {};
   const columns = React.useMemo(
     () => [
       {
@@ -122,23 +136,71 @@ function constantList() {
     []
   );
   const data = React.useMemo(() => rawData, []);
-  return getTable({ columns, data });
+  return GetTable({ columns, data });
 }
 
-function difficultyList({
-  addDifficultyHandler,
-  editDifficultyHandler,
-  deleteDifficultyHandler
-}) {
-  
+const DifficultyList = () => {
+    let [ state, actions ] = useGlobal();
+  React.useEffect (() => {
+      actions.toggleFetching(true);
+    apiGetDifficulties(1)
+        .then(res => {
+          if (res.status === 200 && res.data) {
+              let data = res.data;
+              actions.storeData('difficulties', data);
+          }
+        })
+        .catch(err => {
+          console.log(err);
+        })
+        .finally((data) => {
+        });
+      actions.toggleFetching(false);
+  }, []);
+  const columns = React.useMemo(() => [
+    {
+      Header: 'SPRINGBOARD',
+      columns: [
+        {
+          Header: 'Dive Code',
+          accessor: 'code'
+        }
+      ]
+    },
+    {
+      Header: 'Positions',
+      columns: [
+        {
+          Header: 'A',
+          accessor: 'A'
+        },
+        {
+          Header: 'B',
+          accessor: 'B'
+        },
+        {
+          Header: 'C',
+          accessor: 'C'
+        },
+        {
+          Header: 'D',
+          accessor: 'D'
+        }
+      ]
+    }
+  ], []);
+  const { difficulties, isFetching } = state;
+  let data = React.useMemo(() => difficulties, [difficulties]);
+    return (GetTable({columns, data}));
 }
 
-function content(type, handlers) {
+
+function content(type) {
   switch (type) {
     case 1:
-      return constantList(handlers);
+      return ConstantList();
     case 2:
-      return difficultyList(handlers);
+      return DifficultyList();
     default:
       return null;
   }
@@ -147,13 +209,8 @@ function content(type, handlers) {
 const useGlobal = useGlobalHook(React, initialState, actions);
 
 const SystemSetting = () => {
-  let [state, setState] = useGlobal();
+  let [globalState, globalActions] = useGlobal();
   const handleTabsOnChange = newTab => {};
-  const listHandlers = {
-    addDifficultyHandler: () => {},
-    editDifficultyHandler: () => {},
-    deleteDifficultyHandler: () => {}
-  };
   return (
     <React.Fragment>
       {/* <div>
@@ -165,7 +222,7 @@ const SystemSetting = () => {
           </Tabs>
         </AppBar>
       </div> */}
-      {content(2, listHandlers)}
+      {content(2 )}
     </React.Fragment>
   );
 };

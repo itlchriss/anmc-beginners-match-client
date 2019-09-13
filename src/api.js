@@ -1,65 +1,13 @@
-const DEBUG = true;
+import axios from 'axios';
 
-const Config = ({ debug = DEBUG }) => {
-  return {
-    apiBase: "",
-    debug: debug
-  };
-};
+const APIHost = 'http://localhost';
+const APIBase = '/ANMCApi/api';
 
-module.exports = {
-  getConstants: function() {
-    return {
-      index: "key",
-      columns: [
-        {
-          Header: "Key",
-          accessor: "key"
-        },
-        {
-          Header: "Value",
-          accessor: "value"
-        },
-        {
-          Header: "Description",
-          accessor: "description"
-        }
-      ],
-      data: [
-        {
-          key: "A",
-          value: "Straight",
-          description: "Diving Positions"
-        },
-        {
-          key: "B",
-          value: "Pike",
-          description: "Diving Positions"
-        },
-        {
-          key: "C",
-          value: "Tuck",
-          description: "Diving Positions"
-        },
-        {
-          key: "D",
-          value: "Free",
-          description: "Diving Positions"
-        }
-      ]
-    };
-  },
-  getDifficulties: function () {
-    return {
-      index: 'code',
-      columns: [
-        {
-          
-        }
-      ],
-      data: [
-        
-      ]
-    };
-  }
-};
+// Difficulty Table api
+const diffTableRequest = axios.create({
+  baseURL: APIHost + APIBase + '/difficulties'
+});
+
+// Difficulty Table api calls
+export const apiGetDifficulties = stageType => diffTableRequest.get('/stageType/' + stageType);
+
