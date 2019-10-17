@@ -18,7 +18,7 @@ const Main = () => {
     <main>
       <Switch>
         {/* <Route exact path="/" component={Login} /> */}
-        <Route exact path="/" component={MatchSetting} />
+        <Route exact path="/" component={RunMatch} />
         <Route path="/matchSetting" component={MatchSetting} />
         <Route path="/systemSetting" component={SystemSetting} />
         <Route path="/run" component={RunMatch} />

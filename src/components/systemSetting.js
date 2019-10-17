@@ -4,16 +4,12 @@ import Tab from "@material-ui/core/Tab";
 import AppBar from "@material-ui/core/AppBar";
 import useGlobalHook from "use-global-hook";
 import {
-  Table,
-  TableHead,
-  TableBody,
-  TableRow,
-  TableCell,
   IconButton
 } from "@material-ui/core";
 import CreateIcon from "@material-ui/icons/Create";
-import { useTable, useRowSelect } from "react-table";
+// import { useTable, useRowSelect } from "react-table";
 import { apiGetDifficulties } from "../api";
+import GetTable from './utilities/getTable';
 
 const diveTypes = {
   SINGLE: 1,
@@ -63,54 +59,54 @@ const actions = {
   }
 };
 
-function GetTable({ columns, data}) {
-  const {
-    getTableProps,
-    headerGroups,
-    rows,
-    prepareRow,
-    state: [{ selectedRows }]
-  } = useTable(
-    {
-      columns,
-      data
-    },
-    useRowSelect
-  );
-  return (
-    <React.Fragment>
-      <Table {...getTableProps()}>
-        <TableHead>
-          {headerGroups.map(headerGroup => (
-            <TableRow {...headerGroup.getHeaderGroupProps()}>
-              {headerGroup.headers.map(column => (
-                <TableCell {...column.getHeaderProps()}>
-                  {column.render("Header")}
-                </TableCell>
-              ))}
-            </TableRow>
-          ))}
-        </TableHead>
-        <TableBody>
-          {rows.map(
-            (row, i) =>
-              prepareRow(row) || (
-                <TableRow {...row.getRowProps()}>
-                  {row.cells.map(cell => {
-                    return (
-                      <TableCell {...cell.getCellProps()}>
-                        {cell.render("Cell")}
-                      </TableCell>
-                    );
-                  })}
-                </TableRow>
-              )
-          )}
-        </TableBody>
-      </Table>
-    </React.Fragment>
-  );
-}
+// function GetTable({ columns, data}) {
+//   const {
+//     getTableProps,
+//     headerGroups,
+//     rows,
+//     prepareRow,
+//     state: [{ selectedRows }]
+//   } = useTable(
+//     {
+//       columns,
+//       data
+//     },
+//     useRowSelect
+//   );
+//   return (
+//     <React.Fragment>
+//       <Table {...getTableProps()}>
+//         <TableHead>
+//           {headerGroups.map(headerGroup => (
+//             <TableRow {...headerGroup.getHeaderGroupProps()}>
+//               {headerGroup.headers.map(column => (
+//                 <TableCell {...column.getHeaderProps()}>
+//                   {column.render("Header")}
+//                 </TableCell>
+//               ))}
+//             </TableRow>
+//           ))}
+//         </TableHead>
+//         <TableBody>
+//           {rows.map(
+//             (row, i) =>
+//               prepareRow(row) || (
+//                 <TableRow {...row.getRowProps()}>
+//                   {row.cells.map(cell => {
+//                     return (
+//                       <TableCell {...cell.getCellProps()}>
+//                         {cell.render("Cell")}
+//                       </TableCell>
+//                     );
+//                   })}
+//                 </TableRow>
+//               )
+//           )}
+//         </TableBody>
+//       </Table>
+//     </React.Fragment>
+//   );
+// }
 
 function ConstantList() {
   // const { key, columns: rawColumns, data: rawData } = getConstants();

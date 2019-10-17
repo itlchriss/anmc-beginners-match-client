@@ -13,7 +13,7 @@
     "react-pie-menu": "0.2.5",
     "react-router-dom": "5.0.1",
     "react-scripts": "3.0.1",
-    "react-table": "7.0.0-alpha.34",
+    "react-table": "7.0.0-beta.12",
     "use-global-hook": "0.1.7"
   },
   "devDependencies": {
