@@ -66,7 +66,7 @@ export default function GetTable({
     );
     return (
         <React.Fragment>
-            <Table {...getTableProps()}>
+            <Table {...getTableProps()} size={'small'}>
                 <TableHead>
                     {headerGroups.map(headerGroup => (
                         <TableRow {...headerGroup.getHeaderGroupProps()}>
