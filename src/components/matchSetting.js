@@ -7,14 +7,11 @@ import
   ButtonBase,
   Typography,
   Table, TableBody, TableCell, TableHead, TableRow,
-    MenuItem, Grid
+    MenuItem, Grid, Modal, Backdrop, Fade
 } from "@material-ui/core";
 import { makeStyles } from '@material-ui/core/styles';
 import  AddIcon from '@material-ui/icons/Add';
 import useGlobalHook from "use-global-hook";
-import Fade from "@material-ui/core/Fade";
-import Modal from "@material-ui/core/Modal";
-import Backdrop from "@material-ui/core/Backdrop";
 import {
   apiAddMatch,
   apiGetMatches,
@@ -25,13 +22,19 @@ import {
   apiGetAreas,
   apiGetDifficulties,
   apiGetCodes,
-  apiGetMatchDivers, apiGetMatchAssemblyDivers
+  apiGetMatchDivers, apiGetMatchAssemblyDivers, apiAddArea, apiAddCode
 } from '../api';
+import CheckResponse from "./utilities/checkResponse";
 
 const useStyles = makeStyles(theme => ({
   container: {
     display: 'flex',
     flexWrap: 'wrap',
+  },
+  modal: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center'
   },
   textField: {
     marginLeft: theme.spacing(1),
@@ -355,12 +358,55 @@ const MatchAssemblyForm = ({ state: { mode, constants: { stageTypes, heightTypes
 
 const MatchAssemblyDiverForm = ({
   state: {
-    constants: { areas, codes, difficulties },
+    constants,
     targetMatch: { enName: matchEnName, matchId },
     targetAssembly: { id: matchAssemblyId, enName: matchAssemblyEnName }
   },
-  actions
+  actions: { handleSubmitMatchAssemblyDiverForm, handleSubmitAreaForm, handleSubmitCodeForm,
+    getDiverFormConstants
+  }
 }) => {
+  let [modalState, setModalState] = React.useState({
+    open: false, modalTitle: '', handler: null, mode: -1,
+    diver: { Id: -1, AreaId: -1, ClubName: '', CodeId: -1, DiverCname: '', DiverEname: ''},
+    newArea: { AreaCname: '', AreaEname: '' }, newCode : { codeName: '' }, codeMode: 0, areaMode: 0
+  });
+  React.useEffect(() => {
+    getDiverFormConstants();
+  }, [modalState.areaMode, modalState.codeMode]);
+  console.log(open);
+  let { areas, difficulties, codes } = constants;
+  const classes = useStyles;
+  const handleDiverChange = name => event => {
+    let diver = modalState.diver;
+    diver[name] = event.target.value;
+    setModalState({ ...modalState, diver: diver });
+  };
+  const handleAreaChange = name => event => {
+    let area = modalState.newArea;
+    area[name] = event.target.value;
+    setModalState({...modalState, newArea: area });
+  };
+  const handleCodeChange = name => event => {
+    let newCode = modalState.newCode;
+    newCode[name] = event.target.value;
+    setModalState({ ...modalState, newCode: newCode }); };
+  const handleModeChange = name => {
+    let mode = modalState[name] ? 0 : 1;
+    setModalState({ ...modalState, [name]: mode });
+  };
+  // const handleModalOpen = () => setModalState({ ...modalState,  open: true });
+  const handleModalClose = () => setModalState({ ...modalState,  open: false });
+  const openAddAMatchAssemblyDiverForm = () => {
+    setModalState({ mode: 1, modalTitle: 'Add Diver',
+      areaMode: 0, codeMode: 0, open: true,
+      newArea: { AreaCname: '', AreaEname: '' }, newCode: { codeName: '' },
+      diver: { MatchAssemblyDiverId: -1, DiverId: -1, AreaId: -1, ClubName: '', CodeId: -1, DiverCname: '', DiverEname: ''} });
+  }
+  let {
+    areaMode, codeMode, newCode: { codeName },
+    newArea: { AreaCname, AreaEname },
+    mode, open, modalTitle, diver: { MatchAssemblyDiverId, DiverId, AreaId, ClubName, CodeId, DiverCname, DiverEname} } = modalState;
 
   return (
       <React.Fragment>
@@ -376,8 +422,174 @@ const MatchAssemblyDiverForm = ({
           <Grid item xs={6} aria-label={'match diver list'}>
           </Grid>
           <Grid item xs={6} aria-label={'current assembly diver list'}>
+            <div>
+              <button onClick={ openAddAMatchAssemblyDiverForm }>Add Diver</button>
+            </div>
           </Grid>
         </Grid>
+        <Modal
+            aria-labelledby="add-diver-transition-modal"
+            aria-describedby="add-diver-description-transition-modal"
+            className={classes.modal}
+            open={open}
+            onClose={handleModalClose}
+            closeAfterTransition
+            BackdropComponent={Backdrop}
+            BackdropProps={{ timeout: 500, }}>
+          <Fade in={open}>
+            <Paper className={classes.paper}>
+              <h2>{ modalTitle }</h2>
+              <p>
+              { mode === 1 ? ('The following diver will be added to : ' +  matchAssemblyEnName ) :
+                  'Manipulating the diver in ' +  matchAssemblyEnName }
+              </p>
+              <TextField
+                  label="Diver Chinese Name"
+                  fullWidth
+                  className={classes.textField}
+                  value={DiverCname || ''}
+                  onChange={ handleDiverChange('DiverCname') }
+                  helperText={'Enter the chinese name of the diver'}
+              />
+              <TextField
+                  label="Diver English Name"
+                  fullWidth
+                  className={classes.textField}
+                  value={DiverEname || ''}
+                  onChange={ handleDiverChange('DiverEname') }
+                  helperText={'Enter the english name of the diver'}
+              />
+              <Grid container>
+                { areaMode === 0 ? (
+                    <React.Fragment>
+                      <Grid item xs={10}>
+                        <TextField
+                            label="Area"
+                            fullWidth
+                            select
+                            className={classes.textField}
+                            value={AreaId || ''}
+                            onChange={ handleDiverChange('AreaId') }
+                            helperText={'Select the Area. Click (Add Area) if option is not available'}
+                            margin={'normal'}
+                        >
+                          {
+                            areas && areas.length > 0 && console.log(areas) ?
+                                areas.map(({ id, areaCname, areaEname }, i) => (
+                                    <MenuItem key={i} value={id}>
+                                      {areaEname}
+                                    </MenuItem>
+                                )) : <MenuItem />
+                          }
+                        </TextField>
+                      </Grid>
+                      <Grid item xs={2}><button onClick={() => handleModeChange('areaMode')}>Add Area</button></Grid>
+                    </React.Fragment>
+                  ): (
+                      <React.Fragment>
+                        <Grid item xs={4}>
+                          <TextField
+                            label="Area Chinese Name"
+                            fullWidth
+                            className={classes.textField}
+                            value={AreaCname || ''}
+                            onChange={ handleAreaChange('AreaCname') }
+                            helperText={'Enter the area chinese name'}
+                        />
+                        </Grid>
+                        <Grid item xs={4}>
+                        <TextField
+                            label="Area English Name"
+                            fullWidth
+                            className={classes.textField}
+                            value={AreaEname || ''}
+                            onChange={ handleAreaChange('AreaEname') }
+                            helperText={'Enter the area english name'}
+                        />
+                        </Grid>
+                        <Grid item xs={4}>
+                          <button onClick={() => handleModeChange('areaMode')}>Cancel</button>
+                          <button onClick={() => handleSubmitAreaForm(
+                              1, { AreaCname: AreaCname, AreaEname: AreaEname })}>Submit</button>
+                        </Grid>
+                      </React.Fragment>
+                    )}
+              </Grid>
+              <Grid container>
+                { codeMode === 0 ? (
+                    <React.Fragment>
+                <Grid item xs={10}>
+                  <TextField
+                      label="Code of the Area"
+                      fullWidth
+                      select
+                      className={classes.textField}
+                      value={CodeId || ''}
+                      onChange={ handleDiverChange('CodeId') }
+                      helperText={'Select the Code. Click (Add Code) if option is not available'}
+                      margin={'normal'}
+                  >
+                    {
+                      codes && codes.length > 0 ?
+                          codes.map(({ Id, CodeName }, i) => (
+                              <MenuItem key={i} value={Id}>
+                                {CodeName}
+                              </MenuItem>
+                          )) : <MenuItem />
+                    }
+                  </TextField>
+                </Grid>
+                <Grid item xs={2}>
+                  <button onClick={() => handleModeChange('codeMode')}>Add Code</button>
+                </Grid>
+                    </React.Fragment>
+                      ) : (
+                    <React.Fragment>
+                      <Grid item xs={4}>
+                        <TextField
+                            label="Code Name"
+                            fullWidth
+                            className={classes.textField}
+                            value={codeName || ''}
+                            onChange={ handleCodeChange('codeName') }
+                            helperText={'Enter the code name'}
+                        />
+                      </Grid>
+                      <Grid item xs={4}>
+                        <button onClick={() => handleModeChange('codeMode')}>Cancel</button>
+                        <button onClick={() => handleSubmitCodeForm(
+                            1, { codeName: codeName }
+                        )}>Submit</button>
+                      </Grid>
+                    </React.Fragment>
+                )}
+              </Grid>
+              <TextField
+                  label="Club name"
+                  fullWidth
+                  className={classes.textField}
+                  value={ClubName || ''}
+                  onChange={ handleDiverChange('ClubName') }
+                  helperText={'Name of the club the diver belongs to. optional'}
+              />
+              <div>
+                <button onClick={() => handleSubmitMatchAssemblyDiverForm(
+                    mode,
+                    {
+                      MatchAssemblyDiverId: MatchAssemblyDiverId,
+                      Id: DiverId,
+                      AreaId: AreaId,
+                      ClubName: ClubName,
+                      CodeId: CodeId,
+                      DiverCname: DiverCname,
+                      DiverEname: DiverEname,
+                      CreatedBy: 'dummy'
+                    })
+                }>Submit</button>
+              </div>
+            </Paper>
+          </Fade>
+        </Modal>
       </React.Fragment>
   )
 };
@@ -530,7 +742,31 @@ const actions = {
         });
   },
   getDiverFormConstants: store => {
-
+    let { stageType } = store.state.targetAssembly;
+    let p = [], areas = [], difficulties = [], codes = [];
+    p.push(apiGetAreas());
+    p.push(apiGetDifficulties(stageType));
+    p.push(apiGetCodes());
+    Promise.all(p)
+        .then( result => {
+          if (!CheckResponse(result)) throw 'API Error';
+          else return result.map((r,i) => r.data.data);
+        })
+        .then ( data => {
+          let [ _areas, _diffs, _codes ] = data;
+          areas = _areas;
+          difficulties = _diffs;
+          codes = _codes;
+        })
+        .catch( err => {
+          console.error(err);
+        })
+        .finally(() => {
+          store.setState({
+            ...store.state,
+            constants: { areas: areas, difficulties: difficulties, codes: codes }
+          });
+        });
   },
   refreshMatchList: (store) => {
     store.setState({ loading: true });
@@ -589,6 +825,63 @@ const actions = {
           });
     }
   },
+  handleSubmitMatchAssemblyDiverForm: (store, mode, diver) => {
+
+  },
+  handleSubmitAreaForm: (store, mode, area) => {
+    if (!area.AreaCname || !area.AreaEname) {
+      alert('Please enter both the area chinese and english name');
+    } else {
+      let done = -1;
+      if (mode === 1) {
+        //add
+        store.setState({ ...store.state, loading: true });
+        apiAddArea(area)
+            .then(res => {
+              if (res.status !== 200 && res.data.rtnCode !== 0) throw 'Failed. Please check the input';
+              else done = 1;
+            })
+            .catch(err => {
+              console.error(err);
+              alert(err);
+            })
+            .finally(() => {
+              store.setState({ ...store.state, loading: false });
+            });
+      } else if (mode === 2) {
+        //edit
+      } else {
+        //delete
+      }
+    }
+  },
+  handleSubmitCodeForm: (store, mode, code) => {
+    if (!code.codeName) {
+      alert('Please enter the code name');
+    } else {
+      let done = -1;
+      if (mode === 1) {
+        //add
+        store.setState({ ...store.state, loading: true });
+        apiAddCode(code)
+            .then(res => {
+              if (res.status !== 200 && res.data.rtnCode !== 0) throw 'Failed. Please check the input';
+              else done = 1;
+            })
+            .catch(err => {
+              console.error(err);
+              alert(err);
+            })
+            .finally(() => {
+              store.setState({ ...store.state, loading: false });
+            });
+      } else if (mode === 2) {
+        //edit
+      } else {
+        //delete
+      }
+    }
+  },
   openAddMatchForm: (store) => {
     let p = store.state.componentIndex;
     store.setState({ componentIndex: 2, mode: 1, previousComponentIndex: p });
@@ -624,25 +917,37 @@ const actions = {
         });
   },
   openIndividualMatchAssemblyDiverForm: (store, matchAssembly) => {
-    store.setState({ loading: true, targetAssembly: matchAssembly });
+    store.setState({ ...store.state, loading: true, targetAssembly: matchAssembly });
     //get areas, codes, difficulties and divers of the match
-    let p = [], areas = [], difficulties = [], codes = [], matchDivers = [], matchAssemblyDivers = [];
-    p.push(apiGetAreas());
-    p.push(apiGetDifficulties());
-    p.push(apiGetCodes());
-    p.push(apiGetMatchDivers());
-    p.push(apiGetMatchAssemblyDivers());
+    // let p = [], areas = [], difficulties = [], codes = [], matchDivers = [], matchAssemblyDivers = [];
+    let p = [], matchDivers = [], matchAssemblyDivers = [];
+    // p.push(apiGetAreas());
+    // p.push(apiGetDifficulties(stageType));
+    // p.push(apiGetCodes());
+    p.push(apiGetMatchDivers(store.state.targetMatch.matchId));
+    p.push(apiGetMatchAssemblyDivers(store.state.targetAssembly.id));
     Promise.all(p)
         .then( result => {
-
+          if (!CheckResponse(result)) throw 'API Error';
+          else return result.map((r,i) => r.data.data);
+        })
+        .then ( data => {
+          // let [ _areas, _diffs, _codes, _mds, _mads ] = data;
+          // areas = _areas;
+          // difficulties = _diffs;
+          // codes = _codes;
+          let [ _mds, _mads ] = data;
+          matchDivers = _mds;
+          matchAssembly = _mads;
         })
         .catch( err => {
           console.error(err);
         })
         .finally(() => {
           store.setState({
+            ...store.state,
             componentIndex: 5, previousComponentIndex: 3, loading: false,
-            constants: { areas: areas, difficulties: difficulties, codes: codes },
+            // constants: { areas: areas, difficulties: difficulties, codes: codes },
             matchDivers: matchDivers, matchAssemblyDivers: matchAssemblyDivers
           });
         });
@@ -655,7 +960,9 @@ const actions = {
     store.setState({ componentIndex: 4, mode: 1, previousComponentIndex: p });
   },
   backToPreviousComponent: (store) => {
-    store.setState({ componentIndex: store.state.previousComponentIndex, previousComponentIndex: -1 });
+    store.setState({
+      ...store.state,
+      componentIndex: store.state.previousComponentIndex, previousComponentIndex: -1 });
   }
 };
 

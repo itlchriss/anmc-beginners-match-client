@@ -1,6 +1,7 @@
 import axios from 'axios';
 
-const APIHost = 'http://localhost';
+// const APIHost = 'http://localhost';
+const APIHost = 'http://10.211.55.6';
 const APIBase = '/ANMCApi/api';
 const config = { headers : { 'Content-Type': 'application/json;charset=UTF-8'}};
 
@@ -18,7 +19,7 @@ export const apiGetStageTypes = () => stageTypeTableRequest.get('');
 //Height Type Table api calls
 export const apiGetHeightTypes = () => heightTypeTableRequest.get('');
 //Difficulty Table api calls
-export const apiGetDifficulties = stageType => diffTableRequest.get('/stageType/' + stageType);
+export const apiGetDifficulties = stageType => diffTableRequest.get('/stageType/' + (stageType && stageType ? stageType : ''));
 //Match Table api calls
 export const apiGetMatches = () => matchTableRequest.get('');
 export const apiAddMatch = match => matchTableRequest.post(
@@ -35,5 +36,7 @@ export const apiAddMatchAssemblyDiver = matchAssemblyDiver => diverTableRequest.
 export const apiEditMatchAssemblyDiver = matchAssemblyDiver => diverTableRequest.put('/matchAssembly', matchAssemblyDiver);
 //Area Table api calls
 export const apiGetAreas = () => areaTableRequest.get('');
+export const apiAddArea = area => areaTableRequest.post('', area);
 //Code Table api calls
 export const apiGetCodes = () => codeTableRequest.get('');
+export const apiAddCode = (codeName) => codeTableRequest.post('', codeName );
