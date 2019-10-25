@@ -7,7 +7,8 @@ import
   ButtonBase,
   Typography,
   Table, TableBody, TableCell, TableHead, TableRow,
-    MenuItem, Grid, Modal, Backdrop, Fade
+    MenuItem, Grid, Modal, Backdrop, Fade,
+    Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle
 } from "@material-ui/core";
 import { makeStyles } from '@material-ui/core/styles';
 import  AddIcon from '@material-ui/icons/Add';
@@ -22,9 +23,10 @@ import {
   apiGetAreas,
   apiGetDifficulties,
   apiGetCodes,
-  apiGetMatchDivers, apiGetMatchAssemblyDivers, apiAddArea, apiAddCode
+  apiGetMatchDivers, apiGetMatchAssemblyDivers, apiAddArea, apiAddCode, apiGetAllDifficulties, apiDeleteMatchAssembly
 } from '../api';
 import CheckResponse from "./utilities/checkResponse";
+import Button from "@material-ui/core/Button";
 
 const useStyles = makeStyles(theme => ({
   container: {
@@ -150,7 +152,7 @@ function GetFormAction(mode) {
     case 3:
       action = 'Delete'; break;
     default:
-      throw 'Unknown mode: ' + mode;
+      action = '[Action not Initialized. Please close the form and reopen]'; break;
   }
   return action;
 }
@@ -168,11 +170,213 @@ function GetContent(globalState, globalActions) {
       component = (<MatchAssemblyForm actions={globalActions} state={globalState}/> ); break;
     case 5:
       component = (<MatchAssemblyDiverForm actions={globalActions} state={globalState} />); break;
+    case 6:
+      component = (<ConstantSetting actions={globalActions} state={globalState}/>); break;
     default:
       component = (<p>Invalid Component Index</p>); break;
   }
   return component;
 }
+
+const ConstantSetting = ({
+  state: {
+    constants: { areas, difficulties, codes },
+      apiMessage
+  },
+  actions: {
+    getDiverFormConstants,
+    handleSubmitAreaForm,
+    handleSubmitCodeForm
+  }
+}) => {
+  const [state, setState] = React.useState({
+    areaFormOpen: false, codeFormOpen: false, deleteFormOpen: false, mode: -1,
+    areaModel: { Id: -1, AreaCname: '', AreaEname: ''},
+    codeModel: { Id: -1, CodeName: '' },
+    deleteConfirmHandler: null
+  });
+  React.useEffect(() => {
+    getDiverFormConstants();
+  }, []);
+  const classes = useStyles;
+  const { areaFormOpen, codeFormOpen, deleteFormOpen, areaModel, codeModel, deleteConfirmHandler, mode } = state;
+  const handleFieldChange = (modelName, fieldName) => event => {
+    setState({ ...state, [modelName]: { ...state[modelName], [fieldName]: event.target.value } });
+  };
+  const handleDeleteDialogChange = (open, handler) => {
+    setState({ ...state, deleteFormOpen: open, deleteConfirmHandler: handler });
+  };
+  const handleModalChange = (name, value, mode = -1, handler = null, model = {}) => {
+    let modelName = name.toString().replace('FormOpen', 'Model');
+    setState({ ...state, [name]: value, mode: mode, deleteConfirmHandler: handler, [modelName]: model });
+  };
+  return (
+      <React.Fragment>
+        <div>
+          <Typography component="h3" variant="h5" color="inherit" align={"center"}>
+            Constants Setting
+          </Typography>
+          <Typography component="h3" variant="subtitle1" color="inherit" align={"center"}>
+            Area/Code
+          </Typography>
+        </div>
+        <div>
+          <button onClick={() => handleModalChange('areaFormOpen', true, 1)}>Add Area</button>
+          <button onClick={() => handleModalChange('codeFormOpen', true, 1)}>Add Code</button>
+        </div>
+        <div>
+          { apiMessage ? ('Last operation: ' + apiMessage) : ''}
+        </div>
+        {
+          areas && areas.length > 0 ?
+              (<Table size={'small'} aria-label={'area-table'}>
+                <TableHead>
+                  <TableRow>
+                    <TableCell>Area Chinese Name</TableCell>
+                    <TableCell>Area English Name</TableCell>
+                    <TableCell> </TableCell>
+                    <TableCell> </TableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {
+                    areas.map(({Id, AreaCname, AreaEname}, index) => {
+                      return (
+                          <TableRow key={index}>
+                            <TableCell>{AreaCname}</TableCell>
+                            <TableCell>{AreaEname}</TableCell>
+                              <TableCell>
+                              <button onClick={() => handleModalChange(
+                                  'areaFormOpen', true, 2, null, areas[index])}>Edit</button>
+                            </TableCell>
+                            <TableCell>
+                              <button onClick={() => handleDeleteDialogChange(
+                                  true,
+                                  () => handleSubmitAreaForm(3, areas[index]))}>Delete</button>
+                            </TableCell>
+                          </TableRow>
+                      );
+                    })
+                  }
+                </TableBody>
+              </Table>) :
+              (<p>No area records</p>)
+        }
+        {
+          codes && codes.length > 0 ?
+              (<Table size={'small'} aria-label={'code-table'}>
+                <TableHead>
+                  <TableRow>
+                    <TableCell>Code Name</TableCell>
+                    <TableCell> </TableCell>
+                    <TableCell> </TableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {
+                    codes.map(({Id, CodeName}, index) => {
+                      return (
+                          <TableRow key={index}>
+                            <TableCell>{CodeName}</TableCell>
+                            <TableCell>
+                              <button onClick={() => handleModalChange(
+                                  'codeFormOpen', true, 2, null, codes[index])}>Edit</button>
+                            </TableCell>
+                            <TableCell>
+                              <button onClick={() => handleDeleteDialogChange(
+                                  true,
+                                  () => handleSubmitCodeForm(3, codes[index]))}>Delete</button>
+                            </TableCell>
+                          </TableRow>
+                      );
+                    })
+                  }
+                </TableBody>
+              </Table>) :
+              (<p>No code records</p>)
+        }
+        <Dialog
+            aria-labelledby="delete-transition-dialog"
+            aria-describedby="delete-description-transition-dialog"
+            open={deleteFormOpen}
+            onClose={() => handleDeleteDialogChange(false)}>
+          <DialogTitle id={'delete-transition-dialog'}>
+            Deleting...?
+          </DialogTitle>
+          <DialogContent>
+            <DialogContentText>This action will delete the selected data...</DialogContentText>
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={deleteConfirmHandler} color={'secondary'}>Confirm</Button>
+            <Button onClick={() => handleDeleteDialogChange(false)} color={'primary'}>Close</Button>
+          </DialogActions>
+        </Dialog>
+        {
+          mode !== -1 ?
+              (<React.Fragment>
+                <Dialog
+                    aria-labelledby="area-transition-dialog"
+                    aria-describedby="area-description-transition-dialog"
+                    open={areaFormOpen}
+                    onClose={() => handleModalChange('areaFormOpen', false)}>
+                  <DialogTitle id={'area-transition-dialog'}>
+                    { GetFormAction(mode) + ' Area' }
+                  </DialogTitle>
+                  <DialogContent>
+                    <DialogContentText>Please fill all * fields</DialogContentText>
+                    <TextField
+                        label="Area Chinese Name"
+                        required
+                        fullWidth
+                        className={classes.textField}
+                        value={ areaModel.AreaCname || ''}
+                        onChange={ handleFieldChange('areaModel', 'AreaCname') }
+                        helperText={'Enter the chinese name of the area'}
+                    />
+                    <TextField
+                        label="Area English Name"
+                        required
+                        fullWidth
+                        className={classes.textField}
+                        value={ areaModel.AreaEname || ''}
+                        onChange={ handleFieldChange('areaModel', 'AreaEname') }
+                        helperText={'Enter the english name of the area'}
+                    />
+                  </DialogContent>
+                  <DialogActions>
+                    <Button onClick={() => handleSubmitAreaForm(mode, areaModel)} color={'primary'}>Submit</Button>
+                    <Button onClick={() => handleModalChange('areaFormOpen', false )} color={'secondary'}>Close</Button>
+                  </DialogActions>
+                </Dialog>
+                <Dialog
+                    aria-labelledby="code-transition-dialog"
+                    aria-describedby="code-description-transition-dialog"
+                    open={codeFormOpen}
+                    onClose={() => handleModalChange('codeFormOpen', false)}>
+                  <DialogTitle id={'code-transition-dialog'}>
+                    { GetFormAction(mode) + ' Code' }
+                  </DialogTitle>
+                  <DialogContent>
+                    <DialogContentText>Please fill all * fields</DialogContentText>
+                    <TextField
+                        label="Code Name"
+                        required
+                        fullWidth
+                        className={classes.textField}
+                        value={ codeModel.CodeName || ''}
+                        onChange={ handleFieldChange('codeModel', 'CodeName') }
+                        helperText={'Enter the code name of an area'}
+                    />
+                  </DialogContent>
+                  <DialogActions>
+                    <Button onClick={() => handleSubmitCodeForm(mode, codeModel)} color={'primary'}>Submit</Button>
+                    <Button onClick={() => handleModalChange('codeFormOpen', false )} color={'secondary'}>Close</Button>
+                  </DialogActions>
+                </Dialog>
+              </React.Fragment>) : ''}
+      </React.Fragment>
+  );
+};
 
 const MatchForm = ({ state: { targetMatch: { zhName, enName, startDate, endDate, matchId }, mode },
                    actions: { handleMatchFormSubmit, backToPreviousComponent }}) => {
@@ -242,19 +446,20 @@ const MatchForm = ({ state: { targetMatch: { zhName, enName, startDate, endDate,
 const MatchAssemblyForm = ({ state: { mode, constants: { stageTypes, heightTypes },
   targetMatch: { zhName: matchZhName, enName: matchEnName, matchId },
   targetAssembly: {
-      id, zhName, enName, stageTypeName, stageType, heightType, heightTypeName, numOfExecJudges,
-      numOfSyncJudges
+      Id, ZhName, EnName, StageTypeName, StageType, HeightType, HeightTypeName, NumOfExecJudges,
+      NumOfSyncJudges, Dives
     }}, actions: { handleMatchAssemblyFormSubmit } }) => {
   let [localState, setLocalState] = React.useState({
-    localZhName:zhName,
-    localEnName:enName,
-    localStageType:stageType,
-    localHeightType:heightType,
-    localNumOfExecJudges:numOfExecJudges,
-    localNumOfSyncJudges:numOfSyncJudges
+    localZhName:ZhName,
+    localEnName:EnName,
+    localStageType:StageType,
+    localHeightType:HeightType,
+    localNumOfExecJudges:NumOfExecJudges,
+    localNumOfSyncJudges:NumOfSyncJudges,
+    localDives: Dives
   });
   let {localZhName, localEnName, localStageType, localHeightType,
-        localNumOfExecJudges, localNumOfSyncJudges} = localState;
+        localNumOfExecJudges, localNumOfSyncJudges, localDives} = localState;
   const classes = useStyles;
   const formTitle = GetFormAction(mode) + ' Assembly';
   const handleChange = name => event => {
@@ -293,11 +498,13 @@ const MatchAssemblyForm = ({ state: { mode, constants: { stageTypes, heightTypes
           >
             {
               stageTypes && stageTypes.length > 0 ?
-                  stageTypes.map(({ id, name }, i) => (
-                      <MenuItem key={i} value={id}>
-                        {name}
-                      </MenuItem>
-                  )) : ''
+                  stageTypes.map(({ Id, Name }, i) => {
+                      return (
+                          <MenuItem key={i} value={Id}>
+                            {Name}
+                          </MenuItem>
+                      );
+                  }) : ''
             }
           </TextField>
           <TextField
@@ -312,34 +519,52 @@ const MatchAssemblyForm = ({ state: { mode, constants: { stageTypes, heightTypes
           >
             {
               heightTypes && heightTypes.length > 0 ?
-                  heightTypes.map(({ id, heightM }, i) => (
-                      <MenuItem key={i} value={id}>
-                        {heightM}
-                      </MenuItem>
-                  )) : ''
+                  heightTypes.map(({ Id, HeightM }, i) => {
+                    return(
+                        <MenuItem key={i} value={Id}>
+                          {HeightM}
+                        </MenuItem>);
+                  }) : ''
             }
           </TextField>
-          <TextField
-              label="No. Of Execution Judges"
-              fullWidth
-              className={classes.textField}
-              value={localNumOfExecJudges || ''}
-              onChange={ handleChange('localNumOfExecJudges') }
-              helperText={'Enter the number of Execution judges. Only number is accepted'}
-          />
-          <TextField
+          <Grid container>
+            <Grid item xs={4}>
+              <TextField
+                  label="No. Of Execution Judges"
+                  fullWidth
+                  className={classes.textField}
+                  value={localNumOfExecJudges || 0}
+                  onChange={ handleChange('localNumOfExecJudges') }
+                  helperText={'Enter the number of Execution judges. Only number is accepted'}
+              />
+            </Grid>
+            <Grid item xs={4}>
+              <TextField
               label="No. Of Synchronization Judges"
               fullWidth
               className={classes.textField}
-              value={localNumOfSyncJudges || ''}
+              value={localNumOfSyncJudges || 0}
               onChange={ handleChange('localNumOfSyncJudges') }
               helperText={'Enter the number of Synchronization judges. Only number is accepted'}
           />
+            </Grid>
+            <Grid item xs={4}>
+              <TextField
+                  label="No. Of Dives"
+                  fullWidth
+                  required
+                  className={classes.textField}
+                  value={localDives || 0}
+                  onChange={ handleChange('localDives') }
+                  helperText={'Enter the number of Dives. Only number is accepted'}
+              />
+            </Grid>
+          </Grid>
           <div>
             <button onClick={() => handleMatchAssemblyFormSubmit(
                 mode,
                 {
-                  id: id,
+                  id: Id,
                   Match: matchId,
                   ZhName: localZhName,
                   EnName: localEnName,
@@ -347,6 +572,7 @@ const MatchAssemblyForm = ({ state: { mode, constants: { stageTypes, heightTypes
                   NumOfSyncJudges: localNumOfSyncJudges,
                   StageType: localStageType,
                   HeightType: localHeightType,
+                  Dives: localDives,
                   CreatedBy: 'dummy'
                 })
             }>Submit</button>
@@ -368,13 +594,11 @@ const MatchAssemblyDiverForm = ({
 }) => {
   let [modalState, setModalState] = React.useState({
     open: false, modalTitle: '', handler: null, mode: -1,
-    diver: { Id: -1, AreaId: -1, ClubName: '', CodeId: -1, DiverCname: '', DiverEname: ''},
-    newArea: { AreaCname: '', AreaEname: '' }, newCode : { codeName: '' }, codeMode: 0, areaMode: 0
+    diver: { Id: -1, AreaId: -1, ClubName: '', CodeId: -1, DiverCname: '', DiverEname: ''}
   });
   React.useEffect(() => {
     getDiverFormConstants();
-  }, [modalState.areaMode, modalState.codeMode]);
-  console.log(open);
+  }, []);
   let { areas, difficulties, codes } = constants;
   const classes = useStyles;
   const handleDiverChange = name => event => {
@@ -382,30 +606,13 @@ const MatchAssemblyDiverForm = ({
     diver[name] = event.target.value;
     setModalState({ ...modalState, diver: diver });
   };
-  const handleAreaChange = name => event => {
-    let area = modalState.newArea;
-    area[name] = event.target.value;
-    setModalState({...modalState, newArea: area });
-  };
-  const handleCodeChange = name => event => {
-    let newCode = modalState.newCode;
-    newCode[name] = event.target.value;
-    setModalState({ ...modalState, newCode: newCode }); };
-  const handleModeChange = name => {
-    let mode = modalState[name] ? 0 : 1;
-    setModalState({ ...modalState, [name]: mode });
-  };
-  // const handleModalOpen = () => setModalState({ ...modalState,  open: true });
   const handleModalClose = () => setModalState({ ...modalState,  open: false });
   const openAddAMatchAssemblyDiverForm = () => {
     setModalState({ mode: 1, modalTitle: 'Add Diver',
-      areaMode: 0, codeMode: 0, open: true,
-      newArea: { AreaCname: '', AreaEname: '' }, newCode: { codeName: '' },
+      open: true,
       diver: { MatchAssemblyDiverId: -1, DiverId: -1, AreaId: -1, ClubName: '', CodeId: -1, DiverCname: '', DiverEname: ''} });
-  }
+  };
   let {
-    areaMode, codeMode, newCode: { codeName },
-    newArea: { AreaCname, AreaEname },
     mode, open, modalTitle, diver: { MatchAssemblyDiverId, DiverId, AreaId, ClubName, CodeId, DiverCname, DiverEname} } = modalState;
 
   return (
@@ -427,22 +634,19 @@ const MatchAssemblyDiverForm = ({
             </div>
           </Grid>
         </Grid>
-        <Modal
+        <Dialog
             aria-labelledby="add-diver-transition-modal"
             aria-describedby="add-diver-description-transition-modal"
-            className={classes.modal}
             open={open}
-            onClose={handleModalClose}
-            closeAfterTransition
-            BackdropComponent={Backdrop}
-            BackdropProps={{ timeout: 500, }}>
-          <Fade in={open}>
-            <Paper className={classes.paper}>
-              <h2>{ modalTitle }</h2>
-              <p>
+            onClose={handleModalClose}>
+          <DialogTitle className={classes.paper}>
+            { modalTitle }
+          </DialogTitle>
+          <DialogContent>
+              <DialogContentText>
               { mode === 1 ? ('The following diver will be added to : ' +  matchAssemblyEnName ) :
                   'Manipulating the diver in ' +  matchAssemblyEnName }
-              </p>
+              </DialogContentText>
               <TextField
                   label="Diver Chinese Name"
                   fullWidth
@@ -454,75 +658,43 @@ const MatchAssemblyDiverForm = ({
               <TextField
                   label="Diver English Name"
                   fullWidth
+                  required
                   className={classes.textField}
                   value={DiverEname || ''}
                   onChange={ handleDiverChange('DiverEname') }
                   helperText={'Enter the english name of the diver'}
               />
               <Grid container>
-                { areaMode === 0 ? (
-                    <React.Fragment>
-                      <Grid item xs={10}>
-                        <TextField
-                            label="Area"
-                            fullWidth
-                            select
-                            className={classes.textField}
-                            value={AreaId || ''}
-                            onChange={ handleDiverChange('AreaId') }
-                            helperText={'Select the Area. Click (Add Area) if option is not available'}
-                            margin={'normal'}
-                        >
-                          {
-                            areas && areas.length > 0 && console.log(areas) ?
-                                areas.map(({ id, areaCname, areaEname }, i) => (
-                                    <MenuItem key={i} value={id}>
-                                      {areaEname}
-                                    </MenuItem>
-                                )) : <MenuItem />
-                          }
-                        </TextField>
-                      </Grid>
-                      <Grid item xs={2}><button onClick={() => handleModeChange('areaMode')}>Add Area</button></Grid>
-                    </React.Fragment>
-                  ): (
-                      <React.Fragment>
-                        <Grid item xs={4}>
-                          <TextField
-                            label="Area Chinese Name"
-                            fullWidth
-                            className={classes.textField}
-                            value={AreaCname || ''}
-                            onChange={ handleAreaChange('AreaCname') }
-                            helperText={'Enter the area chinese name'}
-                        />
-                        </Grid>
-                        <Grid item xs={4}>
-                        <TextField
-                            label="Area English Name"
-                            fullWidth
-                            className={classes.textField}
-                            value={AreaEname || ''}
-                            onChange={ handleAreaChange('AreaEname') }
-                            helperText={'Enter the area english name'}
-                        />
-                        </Grid>
-                        <Grid item xs={4}>
-                          <button onClick={() => handleModeChange('areaMode')}>Cancel</button>
-                          <button onClick={() => handleSubmitAreaForm(
-                              1, { AreaCname: AreaCname, AreaEname: AreaEname })}>Submit</button>
-                        </Grid>
-                      </React.Fragment>
-                    )}
-              </Grid>
-              <Grid container>
-                { codeMode === 0 ? (
-                    <React.Fragment>
-                <Grid item xs={10}>
+                <Grid item xs={6}>
+                  <TextField
+                      label="Area"
+                      fullWidth
+                      select
+                      required
+                      className={classes.textField}
+                      value={AreaId || ''}
+                      onChange={ handleDiverChange('AreaId') }
+                      helperText={'Select the Area. Click (Add Area) if option is not available'}
+                      margin={'normal'}
+                  >
+                    {
+                      areas && areas.length > 0 ?
+                          areas.map(({ Id, AreaCname, AreaEname }, i) => {
+                            return (
+                                <MenuItem key={i} value={Id}>
+                                  {AreaEname}
+                                </MenuItem>
+                            );
+                          }) : <MenuItem />
+                    }
+                  </TextField>
+                </Grid>
+                <Grid item xs={6}>
                   <TextField
                       label="Code of the Area"
                       fullWidth
                       select
+                      required
                       className={classes.textField}
                       value={CodeId || ''}
                       onChange={ handleDiverChange('CodeId') }
@@ -539,30 +711,6 @@ const MatchAssemblyDiverForm = ({
                     }
                   </TextField>
                 </Grid>
-                <Grid item xs={2}>
-                  <button onClick={() => handleModeChange('codeMode')}>Add Code</button>
-                </Grid>
-                    </React.Fragment>
-                      ) : (
-                    <React.Fragment>
-                      <Grid item xs={4}>
-                        <TextField
-                            label="Code Name"
-                            fullWidth
-                            className={classes.textField}
-                            value={codeName || ''}
-                            onChange={ handleCodeChange('codeName') }
-                            helperText={'Enter the code name'}
-                        />
-                      </Grid>
-                      <Grid item xs={4}>
-                        <button onClick={() => handleModeChange('codeMode')}>Cancel</button>
-                        <button onClick={() => handleSubmitCodeForm(
-                            1, { codeName: codeName }
-                        )}>Submit</button>
-                      </Grid>
-                    </React.Fragment>
-                )}
               </Grid>
               <TextField
                   label="Club name"
@@ -572,8 +720,8 @@ const MatchAssemblyDiverForm = ({
                   onChange={ handleDiverChange('ClubName') }
                   helperText={'Name of the club the diver belongs to. optional'}
               />
-              <div>
-                <button onClick={() => handleSubmitMatchAssemblyDiverForm(
+              <DialogActions>
+                <Button onClick={() => handleSubmitMatchAssemblyDiverForm(
                     mode,
                     {
                       MatchAssemblyDiverId: MatchAssemblyDiverId,
@@ -585,28 +733,36 @@ const MatchAssemblyDiverForm = ({
                       DiverEname: DiverEname,
                       CreatedBy: 'dummy'
                     })
-                }>Submit</button>
-              </div>
-            </Paper>
-          </Fade>
-        </Modal>
+                } color={'primary'}>Submit</Button>
+                <Button onClick={handleModalClose} color={'secondary'}>Close</Button>
+              </DialogActions>
+          </DialogContent>
+        </Dialog>
       </React.Fragment>
   )
 };
 
-const MatchList = ({ state: { matchList }, actions: { openAddMatchForm, refreshIndividualMatch} }) => {
+const MatchList = ({ state: { matchList }, actions: { openAddMatchForm, openIndividualMatch} }) => {
   const classes = useStyles;
+  const handleAddMatchClick = () => event => {
+    event.preventDefault();
+    openAddMatchForm();
+  };
+  const handleOpenIndividualMatch = (matchId) => event => {
+    event.preventDefault();
+    openIndividualMatch(matchId);
+  };
   return (
       <React.Fragment>
         <div>
-          <button onClick={() => openAddMatchForm()}>Add Match</button>
+          <Button onClick={handleAddMatchClick} variant={'outlined'} color={'primary'}>Add Match</Button>
         </div>
         {
           (!matchList || matchList.length === 0) ? ''
               : matchList.map((match, i) => {
                 return (
                     <ButtonBase
-                        onClick={() => refreshIndividualMatch(match.matchId)}
+                        onClick={handleOpenIndividualMatch(match.matchId)}
                         focusRipple
                         key={i}
                         className={classes.complexButton}
@@ -635,11 +791,23 @@ const MatchList = ({ state: { matchList }, actions: { openAddMatchForm, refreshI
 };
 
 const IndividualMatch = ({ state: {
+  callRefresh,
   targetMatch: {
     matchId, loading, matchAssemblies, zhName, enName, startDate, endDate
   }}, actions: {
-  openEditAssemblyForm, openAddAssemblyForm, refreshIndividualMatch, openIndividualMatchAssemblyDiverForm} }) => {
-  const deleteAssemblyPrompt = (item) => {
+  openEditAssemblyForm, openAddAssemblyForm, refreshIndividualMatch, openIndividualMatchAssemblyDiverForm,
+  goToComponent, handleMatchAssemblyFormSubmit
+} }) => {
+  React.useEffect(() => {
+    console.log('mount')
+    refreshIndividualMatch(3); }, []);
+  let [state, setState] = React.useState({
+    deleteDialogOpen: false, targetAssembly: {}
+  });
+  let { deleteDialogOpen, targetAssembly } = state;
+  const deleteAssemblyPrompt = (item) => event => {
+    event.preventDefault();
+    setState({ ...state, deleteDialogOpen: !!item, targetAssembly: item });
   };
   return (
       <React.Fragment>
@@ -656,6 +824,7 @@ const IndividualMatch = ({ state: {
         </div>
         <div>
           <div>
+            <button onClick={() => goToComponent(6)}>Area/Code</button>
             <button onClick={() => openAddAssemblyForm()}>Add Match Assembly</button>
             <button onClick={() => refreshIndividualMatch(matchId)}>Refresh</button>
           </div>
@@ -671,6 +840,7 @@ const IndividualMatch = ({ state: {
                             <TableCell>English Name</TableCell>
                             <TableCell>Type of Stage</TableCell>
                             <TableCell>Height of Stage</TableCell>
+                            <TableCell>No. Of Dives</TableCell>
                             <TableCell>No. Of Judges(E/S)</TableCell>
                             <TableCell> </TableCell>
                             <TableCell> </TableCell>
@@ -679,8 +849,8 @@ const IndividualMatch = ({ state: {
                         <TableBody>
                           {
                             matchAssemblies.map(({
-                              id, matchId, zhName, enName, stageTypeName, heightTypeName, numOfExecJudges,
-                              numOfSyncJudges
+                              Id, MatchId, ZhName, EnName, StageTypeName, HeightTypeName, NumOfExecJudges,
+                              NumOfSyncJudges, Dives
                             }, i) => {
                               return (
                                   <TableRow key={i}>
@@ -689,16 +859,17 @@ const IndividualMatch = ({ state: {
                                         Manage
                                       </button>
                                     </TableCell>
-                                    <TableCell>{zhName}</TableCell>
-                                    <TableCell>{enName}</TableCell>
-                                    <TableCell>{stageTypeName}</TableCell>
-                                    <TableCell>{heightTypeName}</TableCell>
-                                    <TableCell>{numOfExecJudges + '/' + numOfSyncJudges}</TableCell>
+                                    <TableCell>{ZhName}</TableCell>
+                                    <TableCell>{EnName}</TableCell>
+                                    <TableCell>{StageTypeName}</TableCell>
+                                    <TableCell>{HeightTypeName}</TableCell>
+                                    <TableCell>{Dives ? Dives : 'N/A'}</TableCell>
+                                    <TableCell>{NumOfExecJudges + '/' + NumOfSyncJudges}</TableCell>
                                     <TableCell>
                                       <button onClick={() => openEditAssemblyForm(matchAssemblies[i])}>Edit</button>
                                     </TableCell>
                                     <TableCell>
-                                      <button onClick={() => deleteAssemblyPrompt(matchAssemblies[i])}>Delete</button>
+                                      <button onClick={deleteAssemblyPrompt(matchAssemblies[i])}>Delete</button>
                                     </TableCell>
                                   </TableRow>
                               );
@@ -711,6 +882,19 @@ const IndividualMatch = ({ state: {
             }
           </Paper>
         </div>
+        {state.targetAssembly ?
+            (<Dialog open={deleteDialogOpen} onClose={deleteAssemblyPrompt(null)}>
+              <DialogTitle>Delete Assembly</DialogTitle>
+              <DialogContent>
+                <DialogContentText>Deleting...{state.targetAssembly.EnName}</DialogContentText>
+                <DialogActions>
+                  <Button onClick={() => handleMatchAssemblyFormSubmit(3, state.targetAssembly)}
+                          color={'secondary'}>Confirm</Button>
+                  <Button onClick={() => deleteAssemblyPrompt(null)} color={'primary'}>Close</Button>
+                </DialogActions>
+              </DialogContent>
+            </Dialog>) : <React.Fragment/>
+        }
       </React.Fragment>
   );
 };
@@ -731,8 +915,9 @@ const actions = {
           }
         })
         .then(({rs, rh}) => {
-          rs.forEach(({ id, name }, i) => { stageTypes.push({ id, name }); });
-          rh.forEach(({ id, heightM }, i) => { heightTypes.push({ id, heightM }); });
+          // rs.forEach(({ id, name }, i) => { stageTypes.push({ id, name }); });
+          // rh.forEach(({ id, heightM }, i) => { heightTypes.push({ id, heightM }); });
+          stageTypes = rs; heightTypes = rh;
         })
         .catch(err => {
           console.error(err);
@@ -745,7 +930,7 @@ const actions = {
     let { stageType } = store.state.targetAssembly;
     let p = [], areas = [], difficulties = [], codes = [];
     p.push(apiGetAreas());
-    p.push(apiGetDifficulties(stageType));
+    p.push(stageType ? apiGetDifficulties(stageType): apiGetAllDifficulties());
     p.push(apiGetCodes());
     Promise.all(p)
         .then( result => {
@@ -810,10 +995,23 @@ const actions = {
     }
   },
   handleMatchAssemblyFormSubmit: (store, mode, matchAssembly) => {
+    let apiMessage = null;
     if (mode === 1) {
       store.setState({ loading: true });
-      let apiMessage = null;
       apiAddMatchAssembly(matchAssembly)
+          .then( res => {
+            apiMessage = res.status === 200 ? res.description: 'API Error';
+            console.log(res);
+          })
+          .catch( err => {
+            console.error(err);
+          })
+          .finally(() => {
+            store.setState({ componentIndex: 3, apiMessage: apiMessage, previousComponentIndex: 1 });
+          });
+    } else if (mode === 3) {
+      //delete
+      apiDeleteMatchAssembly(matchAssembly)
           .then( res => {
             apiMessage = res.status === 200 ? res.description: 'API Error';
           })
@@ -821,7 +1019,7 @@ const actions = {
             console.error(err);
           })
           .finally(() => {
-            store.setState({ componentIndex: 3, callRefresh: true, apiMessage: apiMessage, previousComponentIndex: 1 });
+            store.setState({ componentIndex: 3, apiMessage: apiMessage, previousComponentIndex: 1 });
           });
     }
   },
@@ -832,21 +1030,21 @@ const actions = {
     if (!area.AreaCname || !area.AreaEname) {
       alert('Please enter both the area chinese and english name');
     } else {
-      let done = -1;
+      let apiMessage = null;
       if (mode === 1) {
         //add
         store.setState({ ...store.state, loading: true });
         apiAddArea(area)
             .then(res => {
               if (res.status !== 200 && res.data.rtnCode !== 0) throw 'Failed. Please check the input';
-              else done = 1;
+              else apiMessage = 'Success';
             })
             .catch(err => {
               console.error(err);
-              alert(err);
+              apiMessage = err;
             })
             .finally(() => {
-              store.setState({ ...store.state, loading: false });
+              store.setState({ ...store.state, loading: false, apiMessage: apiMessage });
             });
       } else if (mode === 2) {
         //edit
@@ -856,24 +1054,24 @@ const actions = {
     }
   },
   handleSubmitCodeForm: (store, mode, code) => {
-    if (!code.codeName) {
+    if (!code.CodeName) {
       alert('Please enter the code name');
     } else {
-      let done = -1;
+      let apiMessage = null;
       if (mode === 1) {
         //add
         store.setState({ ...store.state, loading: true });
         apiAddCode(code)
             .then(res => {
               if (res.status !== 200 && res.data.rtnCode !== 0) throw 'Failed. Please check the input';
-              else done = 1;
+              else apiMessage = 'Success';
             })
             .catch(err => {
               console.error(err);
-              alert(err);
+              apiMessage = err;
             })
             .finally(() => {
-              store.setState({ ...store.state, loading: false });
+              store.setState({ ...store.state, loading: false, apiMessage: apiMessage });
             });
       } else if (mode === 2) {
         //edit
@@ -886,10 +1084,16 @@ const actions = {
     let p = store.state.componentIndex;
     store.setState({ componentIndex: 2, mode: 1, previousComponentIndex: p });
   },
-  refreshIndividualMatch: (store, matchId) => {
-    let targetMatch = { zhName: '', enName: '', matchId: matchId, startDate: '', endDate: '', matchAssemblies: [] };
+  openIndividualMatch: (store, matchId) => {
     let p = store.state.componentIndex;
-    store.setState({ loading: true });
+    store.setState({ ...store.state,
+      componentIndex: 3, previousComponentIndex: p,
+      targetMatch: { zhName: '', enName: '', matchId: matchId, startDate: '', endDate: '', matchAssemblies: [] }});
+  },
+  refreshIndividualMatch: (store, matchId) => {
+    console.log('calling refreshIndividualMatch :' + store.state.callRefresh);
+    let targetMatch = { zhName: '', enName: '', matchId: matchId, startDate: '', endDate: '', matchAssemblies: [] };
+    store.setState({ ...store.state, loading: true });
     apiGetMatchAssembliesByMatchId({matchId})
         .then(res => {
           if (res && res.status === 200 && res.data && res.data.rtnCode === 0) {
@@ -913,7 +1117,7 @@ const actions = {
           console.log(err);
         })
         .finally(() => {
-          store.setState({ targetMatch: targetMatch, componentIndex: 3, previousComponentIndex: p, loading: false });
+          store.setState({ ...store.state, callRefresh: false, targetMatch: targetMatch, loading: false });
         });
   },
   openIndividualMatchAssemblyDiverForm: (store, matchAssembly) => {
@@ -963,6 +1167,10 @@ const actions = {
     store.setState({
       ...store.state,
       componentIndex: store.state.previousComponentIndex, previousComponentIndex: -1 });
+  },
+  goToComponent: (store, componentIndex) => {
+    let p = store.state.componentIndex;
+    store.setState({ ...store.state, componentIndex: componentIndex, previousComponentIndex: p });
   }
 };
 

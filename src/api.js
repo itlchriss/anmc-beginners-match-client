@@ -1,9 +1,14 @@
 import axios from 'axios';
 
-// const APIHost = 'http://localhost';
-const APIHost = 'http://10.211.55.6';
+const APIHost = 'http://localhost';
+// const APIHost = 'http://10.211.55.6';
 const APIBase = '/ANMCApi/api';
 const config = { headers : { 'Content-Type': 'application/json;charset=UTF-8'}};
+function getDeleteBody(data) {
+    let c = config;
+    c['data'] = data;
+    return c;
+}
 
 const diffTableRequest = axios.create({baseURL: APIHost + APIBase + '/difficulties'});
 const matchTableRequest = axios.create({baseURL: APIHost + APIBase + '/matches'});
@@ -20,6 +25,7 @@ export const apiGetStageTypes = () => stageTypeTableRequest.get('');
 export const apiGetHeightTypes = () => heightTypeTableRequest.get('');
 //Difficulty Table api calls
 export const apiGetDifficulties = stageType => diffTableRequest.get('/stageType/' + (stageType && stageType ? stageType : ''));
+export const apiGetAllDifficulties = () => diffTableRequest.get('');
 //Match Table api calls
 export const apiGetMatches = () => matchTableRequest.get('');
 export const apiAddMatch = match => matchTableRequest.post(
@@ -29,6 +35,8 @@ export const apiAddMatch = match => matchTableRequest.post(
 //Match Assemblies Table api calls
 export const apiGetMatchAssembliesByMatchId = ({matchId}) => matchAssembliesTableRequest.get('/matchId/' + matchId);
 export const apiAddMatchAssembly = matchAssembly => matchAssembliesTableRequest.post('', matchAssembly, config );
+export const apiEditMatchAssembly = matchAssembly => matchAssembliesTableRequest.put('', matchAssembly, config);
+export const apiDeleteMatchAssembly = matchAssembly => matchAssembliesTableRequest.delete('', getDeleteBody(matchAssembly));
 //Diver Table api calls
 export const apiGetMatchDivers = matchId => diverTableRequest.get('/match/matchId/' + matchId);
 export const apiGetMatchAssemblyDivers = matchAssemblyId => diverTableRequest.get('/matchAssembly/matchAssemblyId/' + matchAssemblyId);
