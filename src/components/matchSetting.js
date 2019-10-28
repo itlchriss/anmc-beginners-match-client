@@ -14,19 +14,26 @@ import { makeStyles } from '@material-ui/core/styles';
 import  AddIcon from '@material-ui/icons/Add';
 import useGlobalHook from "use-global-hook";
 import {
-  apiAddMatch,
-  apiGetMatches,
-  apiGetMatchAssembliesByMatchId,
-  apiGetStageTypes,
-  apiGetHeightTypes,
-  apiAddMatchAssembly,
-  apiGetAreas,
-  apiGetDifficulties,
-  apiGetCodes,
-  apiGetMatchDivers, apiGetMatchAssemblyDivers, apiAddArea, apiAddCode, apiGetAllDifficulties, apiDeleteMatchAssembly
+    apiAddMatch,
+    apiGetMatches,
+    apiGetMatchAssembliesByMatchId,
+    apiGetStageTypes,
+    apiGetHeightTypes,
+    apiAddMatchAssembly,
+    apiGetAreas,
+    apiGetDifficulties,
+    apiGetCodes,
+    apiGetMatchDivers,
+    apiGetMatchAssemblyDivers,
+    apiAddArea,
+    apiAddCode,
+    apiGetAllDifficulties,
+    apiDeleteMatchAssembly,
+    apiAddMatchAssemblyDiver
 } from '../api';
 import { CheckResponse, CheckResponseAcceptEmptyData } from "./utilities/checkResponse";
 import Button from "@material-ui/core/Button";
+import getDiveName from "./utilities/getDiveName";
 
 const useStyles = makeStyles(theme => ({
   container: {
@@ -586,36 +593,147 @@ const MatchAssemblyDiverForm = ({
   state: {
     constants,
     targetMatch: { enName: matchEnName, matchId },
-    targetAssembly: { Id: matchAssemblyId, EnName: matchAssemblyEnName, Dives: Dives }
+    targetAssembly: { Id: matchAssemblyId, EnName: matchAssemblyEnName, Dives: Dives, StageType, HeightType }
   },
   actions: { handleSubmitMatchAssemblyDiverForm, handleSubmitAreaForm, handleSubmitCodeForm,
     getDiverFormConstants
   }
 }) => {
-  let [modalState, setModalState] = React.useState({
-    open: false, modalTitle: '', handler: null, mode: -1,
-    diver: { Id: -1, AreaId: -1, ClubName: '', CodeId: -1, DiverCname: '', DiverEname: ''}
+  let [modelState, setModelState] = React.useState({
+    open: false, modelTitle: '', handler: null, mode: -1,
+    diver: { Id: -1, AreaId: -1, ClubName: '', CodeId: -1, DiverCname: '', DiverEname: '',
+        DiveInfo: []},
+    diverList: [],
+    matchDiverList: [],
+    fetching: false
   });
   React.useEffect(() => {
     getDiverFormConstants();
+    setModelState({ ...modelState, fetching: true });
+    apiGetMatchAssemblyDivers(matchAssemblyId)
+        .then(res => {
+            if (res.status === 200) {
+                setModelState({ ...modelState, diverList: res.data.data });
+            } else {
+                throw 'apiGetMatchAssemblyDivers Error';
+            }
+        })
+        .catch ( err => console.error(err))
+        .finally(() => {
+            setModelState({ ...modelState, fetching: false });
+        });
+    console.log('mount');
   }, []);
 
   let { areas, difficulties, codes } = constants;
   const classes = useStyles;
   const handleDiverChange = name => event => {
-    let diver = modalState.diver;
+    let diver = modelState.diver;
     diver[name] = event.target.value;
-    setModalState({ ...modalState, diver: diver });
+    setModelState({ ...modelState, diver: diver });
   };
-  const handleModalClose = () => setModalState({ ...modalState,  open: false });
+  const handleDiveInfoChange = (field, index) => event => {
+    let diver = modelState.diver;
+    let diveInfo = diver.DiveInfo;
+    let value = event.target.value.toString().trim();
+    diveInfo[index][field] = value;
+    if (field === 'diveCode' && (value.length === 4 || value.length === 5)) {
+        let check = false;
+        switch (value.length) {
+            case 4: check = new RegExp('([0-9]{3})([A-Z])', 'g').exec(value); break;
+            case 5: check = new RegExp('([0-9]{4})([A-Z])', 'g').exec(value); break;
+            default: check = null; break;
+        }
+        if (!check) diveInfo[index]['newPair'] = -1;
+        else {
+            diveInfo[index]['diveName'] = getDiveName(value);
+            let targetDiff = difficulties.filter(
+                d => Number(d.Code) === Number(check[1]) &&
+                    Number(d.StageType) === Number(StageType) &&
+                        Number(d.HeightType) === Number(HeightType));
+            diveInfo[index]['difficulty'] =
+                targetDiff && targetDiff[0] && Object.keys(targetDiff[0]).indexOf(check[2]) ? targetDiff[0][check[2]] : '';
+            diveInfo[index]['status'] = diveInfo[index]['difficulty'] && diveInfo[index]['difficulty'] ? 0 : 1;
+        }
+    } else if (value.length < 4) {
+        diveInfo[index]['status'] = -2;
+    } else {
+        diveInfo[index]['status'] = -1;
+    }
+    diver.DiveInfo = diveInfo;
+    setModelState({ ...modelState, diver: diver})
+  };
+  const handleModalClose = () => setModelState({ ...modelState,  open: false });
   const openAddAMatchAssemblyDiverForm = () => {
-    setModalState({ mode: 1, modalTitle: 'Add Diver',
+      let diveInfo = [];
+      if (Dives && Dives) {
+          for (let i = 0; i < Dives; ++i) {
+              diveInfo.push({ diveCode: '', difficulty: '', status: -2, diveName: '' });
+          }
+      }
+    setModelState({
+    ...modelState,
+        mode: 1, modalTitle: 'Add Diver',
       open: true,
-      diver: { MatchAssemblyDiverId: -1, DiverId: -1, AreaId: -1, ClubName: '', CodeId: -1, DiverCname: '', DiverEname: ''} });
+      diver: {
+        MatchAssemblyDiverId: -1, DiverId: -1, AreaId: -1, ClubName: '',
+          CodeId: -1, DiverCname: '', DiverEname: '', DiveInfo: diveInfo } });
   };
   let {
-    mode, open, modalTitle, diver: { MatchAssemblyDiverId, DiverId, AreaId, ClubName, CodeId, DiverCname, DiverEname} } = modalState;
-
+    mode, open, modelTitle,
+      diver: { MatchAssemblyDiverId, DiverId, AreaId, ClubName, CodeId, DiverCname, DiverEname, DiveInfo} } = modelState;
+  const getDiverInfoStyle = (status) => {
+    let bg = '', fg = 'white';
+    switch (status) {
+        case -2:
+            //init
+            bg = 'white'; fg = 'grey';
+            break;
+        case -1:
+            //invalid input
+            bg = 'red';
+            break;
+        case 0:
+            //normal and target
+            bg = 'green';
+            break;
+        case 1:
+            //normal but value is new to db
+            bg = 'blue';
+            break;
+        default:
+            //unknown case
+            bg = 'black';
+            break;
+    }
+    return { borderWidth: 1, borderStyle: 'solid', borderColor: bg, color: fg };
+  };
+  const getDiverInfoHelperText = (status, diveName) => {
+      let text = '';
+      switch (status) {
+          case -2:
+              //init
+              text = 'Please input the dive code first. The corresponding difficulty will be shown if available';
+              break;
+          case -1:
+              //invalid input
+              text = 'Dive code input is invalid. Please check again';
+              break;
+          case 0:
+              //normal and target
+              text = diveName;
+              break;
+          case 1:
+              //normal but value is new to db
+              text = diveName + '. Please input the difficulty as current database does not have the record';
+              break;
+          default:
+              //unknown case
+              text = 'Unknown error';
+              break;
+      }
+      return text;
+  };
   return (
       <React.Fragment>
         <div aria-label={'header'}>
@@ -626,6 +744,11 @@ const MatchAssemblyDiverForm = ({
             { matchAssemblyEnName }
           </Typography>
         </div>
+        <Dialog open={modelState.fetching}>
+          <DialogContent>
+              <DialogContentText>Fetching Data...Please wait...</DialogContentText>
+          </DialogContent>
+        </Dialog>
         <Grid container>
           <Grid item xs={6} aria-label={'match diver list'}>
           </Grid>
@@ -641,7 +764,7 @@ const MatchAssemblyDiverForm = ({
             open={open}
             onClose={handleModalClose}>
           <DialogTitle className={classes.paper}>
-            { modalTitle }
+            { modelTitle }
           </DialogTitle>
           <DialogContent>
               <DialogContentText>
@@ -721,28 +844,50 @@ const MatchAssemblyDiverForm = ({
                   onChange={ handleDiverChange('ClubName') }
                   helperText={'Name of the club the diver belongs to. optional'}
               />
-              <Table size={'small'}>
-                <TableHead>
-                  <TableRow>
-                    <TableCell>Dive#</TableCell>
-                    <TableCell>Dive Code</TableCell>
-                    <TableCell>Difficulty</TableCell>
-                  </TableRow>
-                </TableHead>
-              </Table>
+              {
+                  DiveInfo ? DiveInfo.map(({ diveCode, difficulty, status, diveName }, index) => {
+                      return (
+                      <Grid container key={index} style={getDiverInfoStyle(status)}>
+                          <Grid item xs={6}>
+                              <TextField
+                                  label={"Dive code #" + (index + 1)}
+                                  fullWidth
+                                  className={classes.textField}
+                                  value={diveCode || ''}
+                                  onChange={ handleDiveInfoChange('diveCode', index) }
+                                  helperText={'Dive Code of the corresponding dive'}
+                              />
+                          </Grid>
+                          <Grid item xs={6}>
+                              <TextField
+                                  label={"Difficulty"}
+                                  fullWidth
+                                  className={classes.textField}
+                                  value={difficulty || ''}
+                                  onChange={ handleDiveInfoChange('difficulty', index) }
+                                  helperText={getDiverInfoHelperText(status, diveName)}
+                              />
+                           </Grid>
+                      </Grid>
+                      );
+                  }) : <React.Fragment/>
+              }
               <DialogActions>
-                <Button onClick={() => handleSubmitMatchAssemblyDiverForm(
-                    mode,
-                    {
-                      MatchAssemblyDiverId: MatchAssemblyDiverId,
-                      Id: DiverId,
-                      AreaId: AreaId,
-                      ClubName: ClubName,
-                      CodeId: CodeId,
-                      DiverCname: DiverCname,
-                      DiverEname: DiverEname,
-                      CreatedBy: 'dummy'
-                    })
+                <Button onClick={() => {
+                    handleSubmitMatchAssemblyDiverForm(
+                        mode,
+                        {
+                            MatchAssemblyDiverId: MatchAssemblyDiverId,
+                            Id: DiverId,
+                            AreaId: AreaId,
+                            ClubName: ClubName,
+                            CodeId: CodeId,
+                            DiverCname: DiverCname,
+                            DiverEname: DiverEname,
+                            DiveInfo: DiveInfo,
+                            CreatedBy: 'dummy'
+                        })
+                    }
                 } color={'primary'}>Submit</Button>
                 <Button onClick={handleModalClose} color={'secondary'}>Close</Button>
               </DialogActions>
@@ -933,10 +1078,11 @@ const actions = {
         });
   },
   getDiverFormConstants: store => {
-    let { stageType } = store.state.targetAssembly;
+    let { StageType, HeightType } = store.state.targetAssembly;
     let p = [], areas = [], difficulties = [], codes = [];
     p.push(apiGetAreas());
-    p.push(stageType ? apiGetDifficulties(stageType): apiGetAllDifficulties());
+    // p.push(StageType ? apiGetDifficulties(StageType): apiGetAllDifficulties());
+      p.push(apiGetAllDifficulties());
     p.push(apiGetCodes());
     Promise.all(p)
         .then( result => {
@@ -1030,7 +1176,31 @@ const actions = {
     }
   },
   handleSubmitMatchAssemblyDiverForm: (store, mode, diver) => {
-
+    let {
+        MatchAssemblyDiverId, Id, AreaId, ClubName, CodeId,
+        DiverCname, DiverEname, DiveInfo, CreatedBy} = diver;
+    let { Dives } = store.state.targetAssembly;
+    if (mode === 1) {
+        //add diver to the match assembly
+        if (!AreaId || !CodeId || !DiverEname || !DiveInfo) {
+            alert('Please fill in all the required fields');
+        } else if (Number(DiveInfo.length) !== Dives) {
+            alert('Please fill in all the dive info with dive codes and difficulties');
+        } else {
+            store.setState({ ...store.state, loading: true });
+            //with all data -> call api
+            apiAddMatchAssemblyDiver(diver)
+                .then(res => {})
+                .catch(err => console.error(err))
+                .finally(() => {
+                    store.setState({ ...store.state, loading: false });
+                });
+        }
+    } else if (mode === 2) {
+        //edit the diver information
+    } else {
+        //delete the diver from the assembly
+    }
   },
   handleSubmitAreaForm: (store, mode, area) => {
     if (!area.AreaCname || !area.AreaEname) {

@@ -1,7 +1,7 @@
 import axios from 'axios';
 
-// const APIHost = 'http://localhost';
-const APIHost = 'http://10.211.55.6';
+const APIHost = 'http://localhost';
+// const APIHost = 'http://10.211.55.6';
 const APIBase = '/ANMCApi/api';
 const config = { headers : { 'Content-Type': 'application/json;charset=UTF-8'}};
 function getDeleteBody(data) {
@@ -25,6 +25,7 @@ export const apiGetStageTypes = () => stageTypeTableRequest.get('');
 export const apiGetHeightTypes = () => heightTypeTableRequest.get('');
 //Difficulty Table api calls
 export const apiGetDifficulties = stageType => diffTableRequest.get('/stageType/' + (stageType && stageType ? stageType : ''));
+export const apiGetDifficultiesByStageAndHeight = (stageType, heightType) => diffTableRequest.get('/stageType/' + stageType + '/heightType/' + heightType);
 export const apiGetAllDifficulties = () => diffTableRequest.get('');
 //Match Table api calls
 export const apiGetMatches = () => matchTableRequest.get('');
