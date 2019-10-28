@@ -1,7 +1,7 @@
 import axios from 'axios';
 
-const APIHost = 'http://localhost';
-// const APIHost = 'http://10.211.55.6';
+// const APIHost = 'http://localhost';
+const APIHost = 'http://10.211.55.6';
 const APIBase = '/ANMCApi/api';
 const config = { headers : { 'Content-Type': 'application/json;charset=UTF-8'}};
 function getDeleteBody(data) {

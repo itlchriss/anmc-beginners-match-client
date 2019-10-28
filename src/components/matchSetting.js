@@ -25,7 +25,7 @@ import {
   apiGetCodes,
   apiGetMatchDivers, apiGetMatchAssemblyDivers, apiAddArea, apiAddCode, apiGetAllDifficulties, apiDeleteMatchAssembly
 } from '../api';
-import CheckResponse from "./utilities/checkResponse";
+import { CheckResponse, CheckResponseAcceptEmptyData } from "./utilities/checkResponse";
 import Button from "@material-ui/core/Button";
 
 const useStyles = makeStyles(theme => ({
@@ -586,7 +586,7 @@ const MatchAssemblyDiverForm = ({
   state: {
     constants,
     targetMatch: { enName: matchEnName, matchId },
-    targetAssembly: { id: matchAssemblyId, enName: matchAssemblyEnName }
+    targetAssembly: { Id: matchAssemblyId, EnName: matchAssemblyEnName, Dives: Dives }
   },
   actions: { handleSubmitMatchAssemblyDiverForm, handleSubmitAreaForm, handleSubmitCodeForm,
     getDiverFormConstants
@@ -599,6 +599,7 @@ const MatchAssemblyDiverForm = ({
   React.useEffect(() => {
     getDiverFormConstants();
   }, []);
+
   let { areas, difficulties, codes } = constants;
   const classes = useStyles;
   const handleDiverChange = name => event => {
@@ -720,6 +721,15 @@ const MatchAssemblyDiverForm = ({
                   onChange={ handleDiverChange('ClubName') }
                   helperText={'Name of the club the diver belongs to. optional'}
               />
+              <Table size={'small'}>
+                <TableHead>
+                  <TableRow>
+                    <TableCell>Dive#</TableCell>
+                    <TableCell>Dive Code</TableCell>
+                    <TableCell>Difficulty</TableCell>
+                  </TableRow>
+                </TableHead>
+              </Table>
               <DialogActions>
                 <Button onClick={() => handleSubmitMatchAssemblyDiverForm(
                     mode,
@@ -791,16 +801,12 @@ const MatchList = ({ state: { matchList }, actions: { openAddMatchForm, openIndi
 };
 
 const IndividualMatch = ({ state: {
-  callRefresh,
   targetMatch: {
     matchId, loading, matchAssemblies, zhName, enName, startDate, endDate
   }}, actions: {
   openEditAssemblyForm, openAddAssemblyForm, refreshIndividualMatch, openIndividualMatchAssemblyDiverForm,
   goToComponent, handleMatchAssemblyFormSubmit
 } }) => {
-  React.useEffect(() => {
-    console.log('mount')
-    refreshIndividualMatch(3); }, []);
   let [state, setState] = React.useState({
     deleteDialogOpen: false, targetAssembly: {}
   });
@@ -1086,9 +1092,39 @@ const actions = {
   },
   openIndividualMatch: (store, matchId) => {
     let p = store.state.componentIndex;
-    store.setState({ ...store.state,
-      componentIndex: 3, previousComponentIndex: p,
-      targetMatch: { zhName: '', enName: '', matchId: matchId, startDate: '', endDate: '', matchAssemblies: [] }});
+    let targetMatch = { zhName: '', enName: '', matchId: matchId, startDate: '', endDate: '', matchAssemblies: [] };
+    store.setState({ ...store.state, loading: true });
+    apiGetMatchAssembliesByMatchId({matchId})
+        .then(res => {
+          if (res && res.status === 200 && res.data && res.data.rtnCode === 0) {
+            return res.data;
+          } else {
+            return { match: null, matchAssemblies: null };
+          }
+        })
+        .then (data => {
+          if (data && data) {
+            let matchId = targetMatch.matchId;
+            let { match: { zhName, enName, startDate, endDate }, matchAssemblies } = data;
+            targetMatch = {
+              zhName: zhName, enName: enName, matchId: matchId,
+              startDate: startDate, endDate: endDate,
+              matchAssemblies: matchAssemblies
+            };
+          }
+        })
+        .catch(err => {
+          console.log(err);
+        })
+        .finally(() => {
+          // store.setState({ ...store.state,
+          //   componentIndex: 3, previousComponentIndex: p,
+          //   targetMatch: { zhName: '', enName: '', matchId: matchId, startDate: '', endDate: '', matchAssemblies: [] }});
+          // store.setState({ ...store.state, callRefresh: false, targetMatch: targetMatch, loading: false });
+          store.setState({ ...store.state,
+            componentIndex: 3, previousComponentIndex: p,
+            targetMatch: targetMatch, loading: false});
+        });
   },
   refreshIndividualMatch: (store, matchId) => {
     console.log('calling refreshIndividualMatch :' + store.state.callRefresh);
@@ -1122,27 +1158,21 @@ const actions = {
   },
   openIndividualMatchAssemblyDiverForm: (store, matchAssembly) => {
     store.setState({ ...store.state, loading: true, targetAssembly: matchAssembly });
-    //get areas, codes, difficulties and divers of the match
-    // let p = [], areas = [], difficulties = [], codes = [], matchDivers = [], matchAssemblyDivers = [];
+    console.log(matchAssembly);
     let p = [], matchDivers = [], matchAssemblyDivers = [];
-    // p.push(apiGetAreas());
-    // p.push(apiGetDifficulties(stageType));
-    // p.push(apiGetCodes());
     p.push(apiGetMatchDivers(store.state.targetMatch.matchId));
-    p.push(apiGetMatchAssemblyDivers(store.state.targetAssembly.id));
+    p.push(apiGetMatchAssemblyDivers(store.state.targetAssembly.Id));
     Promise.all(p)
         .then( result => {
-          if (!CheckResponse(result)) throw 'API Error';
+          if (CheckResponseAcceptEmptyData(result)) {
+            throw 'API Error';
+          }
           else return result.map((r,i) => r.data.data);
         })
         .then ( data => {
-          // let [ _areas, _diffs, _codes, _mds, _mads ] = data;
-          // areas = _areas;
-          // difficulties = _diffs;
-          // codes = _codes;
           let [ _mds, _mads ] = data;
           matchDivers = _mds;
-          matchAssembly = _mads;
+          matchAssemblyDivers = _mads;
         })
         .catch( err => {
           console.error(err);
@@ -1151,7 +1181,6 @@ const actions = {
           store.setState({
             ...store.state,
             componentIndex: 5, previousComponentIndex: 3, loading: false,
-            // constants: { areas: areas, difficulties: difficulties, codes: codes },
             matchDivers: matchDivers, matchAssemblyDivers: matchAssemblyDivers
           });
         });
