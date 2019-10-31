@@ -7,11 +7,13 @@ import
   ButtonBase,
   Typography,
   Table, TableBody, TableCell, TableHead, TableRow,
-    MenuItem, Grid, Modal, Backdrop, Fade,
-    Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle
+  MenuItem, Grid, Modal, Backdrop, Fade,
+  Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle, Divider
 } from "@material-ui/core";
 import { makeStyles } from '@material-ui/core/styles';
-import  AddIcon from '@material-ui/icons/Add';
+import  { Add } from '@material-ui/icons';
+import EditIcon from '@material-ui/icons/Edit';
+import ArrowForwardOutlinedIcon from '@material-ui/icons/ArrowForwardOutlined';
 import useGlobalHook from "use-global-hook";
 import {
     apiAddMatch,
@@ -34,6 +36,13 @@ import {
 import { CheckResponse, CheckResponseAcceptEmptyData } from "./utilities/checkResponse";
 import Button from "@material-ui/core/Button";
 import getDiveName from "./utilities/getDiveName";
+import List from "@material-ui/core/List";
+import ListItem from "@material-ui/core/ListItem";
+import ListItemText from "@material-ui/core/ListItemText";
+import ListSubheader from "@material-ui/core/ListSubheader";
+import ListItemIcon from "@material-ui/core/ListItemIcon";
+import MaterialTable from "material-table";
+import IconButton from "@material-ui/core/IconButton";
 
 const useStyles = makeStyles(theme => ({
   container: {
@@ -116,6 +125,8 @@ const useStyles = makeStyles(theme => ({
     justifyContent: 'center',
     color: theme.palette.common.white,
   },
+  thinCell: { padding: 0, fontSize: '10px' },
+  thinTable: { padding: 0, fontSize: '10px'}
 }));
 
 const initialState = {
@@ -176,7 +187,8 @@ function GetContent(globalState, globalActions) {
     case 4:
       component = (<MatchAssemblyForm actions={globalActions} state={globalState}/> ); break;
     case 5:
-      component = (<MatchAssemblyDiverForm actions={globalActions} state={globalState} />); break;
+      component = (<MatchAssemblyDiverComponent actions={globalActions} state={globalState} />); break;
+      // component = (<MatchAssemblyDiverForm actions={globalActions} state={globalState} />); break;
     case 6:
       component = (<ConstantSetting actions={globalActions} state={globalState}/>); break;
     default:
@@ -589,194 +601,379 @@ const MatchAssemblyForm = ({ state: { mode, constants: { stageTypes, heightTypes
   );
 };
 
-const MatchAssemblyDiverForm = ({
-  state: {
-    constants,
-    targetMatch: { enName: matchEnName, matchId },
-    targetAssembly: { Id: matchAssemblyId, EnName: matchAssemblyEnName, Dives: Dives, StageType, HeightType }
-  },
-  actions: { handleSubmitMatchAssemblyDiverForm, handleSubmitAreaForm, handleSubmitCodeForm,
-    getDiverFormConstants
+class MatchAssemblyDiverComponent extends React.Component
+{
+  constructor (props) {
+    super(props);
+    this.state = {
+      open: false, modelTitle: '', handler: null, mode: -1,
+      diver: {
+        Id: -1, AreaId: -1, ClubName: '', CodeId: -1, DiverCname: '', DiverEname: '',
+        DiveInfo: []
+      },
+      diverList: [],
+      matchDiverList: [],
+      fetching: false,
+      callRefresh: false,
+      constants: {}
+    };
+    this.openAddAMatchAssemblyDiverForm = this.openAddAMatchAssemblyDiverForm.bind(this);
+    this.handleModalClose = this.handleModalClose.bind(this);
+    this.handleDiverChange = this.handleDiverChange.bind(this);
+    this.handleDiveInfoChange = this.handleDiveInfoChange.bind(this);
+    this.handleSubmitMatchAssemblyDiverForm = this.handleSubmitMatchAssemblyDiverForm.bind(this);
   }
-}) => {
-  let [modelState, setModelState] = React.useState({
-    open: false, modelTitle: '', handler: null, mode: -1,
-    diver: { Id: -1, AreaId: -1, ClubName: '', CodeId: -1, DiverCname: '', DiverEname: '',
-        DiveInfo: []},
-    diverList: [],
-    matchDiverList: [],
-    fetching: false
-  });
-  React.useEffect(() => {
-    getDiverFormConstants();
-    setModelState({ ...modelState, fetching: true });
-    apiGetMatchAssemblyDivers(matchAssemblyId)
-        .then(res => {
-            if (res.status === 200) {
-                setModelState({ ...modelState, diverList: res.data.data });
-            } else {
-                throw 'apiGetMatchAssemblyDivers Error';
-            }
-        })
-        .catch ( err => console.error(err))
-        .finally(() => {
-            setModelState({ ...modelState, fetching: false });
-        });
-    console.log('mount');
-  }, []);
-
-  let { areas, difficulties, codes } = constants;
-  const classes = useStyles;
-  const handleDiverChange = name => event => {
-    let diver = modelState.diver;
-    diver[name] = event.target.value;
-    setModelState({ ...modelState, diver: diver });
-  };
-  const handleDiveInfoChange = (field, index) => event => {
-    let diver = modelState.diver;
+  handleDiverChange = name => event => {
+  let diver = this.state.diver;
+  diver[name] = event.target.value;
+  this.setState({ diver: diver });
+};
+  handleDiveInfoChange = (field, index) => event => {
+    let { diver, constants: { difficulties }} = this.state;
     let diveInfo = diver.DiveInfo;
     let value = event.target.value.toString().trim();
     diveInfo[index][field] = value;
     if (field === 'diveCode' && (value.length === 4 || value.length === 5)) {
-        let check = false;
-        switch (value.length) {
-            case 4: check = new RegExp('([0-9]{3})([A-Z])', 'g').exec(value); break;
-            case 5: check = new RegExp('([0-9]{4})([A-Z])', 'g').exec(value); break;
-            default: check = null; break;
-        }
-        if (!check) diveInfo[index]['newPair'] = -1;
-        else {
-            diveInfo[index]['diveName'] = getDiveName(value);
-            let targetDiff = difficulties.filter(
-                d => Number(d.Code) === Number(check[1]) &&
-                    Number(d.StageType) === Number(StageType) &&
-                        Number(d.HeightType) === Number(HeightType));
-            diveInfo[index]['difficulty'] =
-                targetDiff && targetDiff[0] && Object.keys(targetDiff[0]).indexOf(check[2]) ? targetDiff[0][check[2]] : '';
-            diveInfo[index]['status'] = diveInfo[index]['difficulty'] && diveInfo[index]['difficulty'] ? 0 : 1;
-        }
+      let check = false;
+      switch (value.length) {
+        case 4: check = new RegExp('([0-9]{3})([A-Z])', 'g').exec(value); break;
+        case 5: check = new RegExp('([0-9]{4})([A-Z])', 'g').exec(value); break;
+        default: check = null; break;
+      }
+      if (!check) diveInfo[index]['newPair'] = -1;
+      else {
+        diveInfo[index]['diveName'] = getDiveName(value);
+        let { StageType, HeightType } = this.props.state.targetAssembly;
+        let targetDiff = difficulties.filter(
+            d => Number(d.Code) === Number(check[1]) &&
+                Number(d.StageType) === Number(StageType) &&
+                Number(d.HeightType) === Number(HeightType));
+        diveInfo[index]['difficulty'] =
+            targetDiff && targetDiff[0] && Object.keys(targetDiff[0]).indexOf(check[2]) ? targetDiff[0][check[2]] : '';
+        diveInfo[index]['status'] = diveInfo[index]['difficulty'] && diveInfo[index]['difficulty'] ? 0 : 1;
+      }
     } else if (value.length < 4) {
-        diveInfo[index]['status'] = -2;
+      diveInfo[index]['status'] = -2;
     } else {
-        diveInfo[index]['status'] = -1;
+      diveInfo[index]['status'] = -1;
     }
     diver.DiveInfo = diveInfo;
-    setModelState({ ...modelState, diver: diver})
-  };
-  const handleModalClose = () => setModelState({ ...modelState,  open: false });
-  const openAddAMatchAssemblyDiverForm = () => {
-      let diveInfo = [];
-      if (Dives && Dives) {
-          for (let i = 0; i < Dives; ++i) {
-              diveInfo.push({ diveCode: '', difficulty: '', status: -2, diveName: '' });
-          }
-      }
-    setModelState({
-    ...modelState,
-        mode: 1, modalTitle: 'Add Diver',
-      open: true,
-      diver: {
-        MatchAssemblyDiverId: -1, DiverId: -1, AreaId: -1, ClubName: '',
-          CodeId: -1, DiverCname: '', DiverEname: '', DiveInfo: diveInfo } });
-  };
-  let {
-    mode, open, modelTitle,
-      diver: { MatchAssemblyDiverId, DiverId, AreaId, ClubName, CodeId, DiverCname, DiverEname, DiveInfo} } = modelState;
-  const getDiverInfoStyle = (status) => {
+    this.setState({diver: diver});
+};
+  handleModalClose = () => this.setState({ open: false });
+  openAddAMatchAssemblyDiverForm = () => {
+  let diveInfo = [];
+  let { Dives, Id } = this.props.state.targetAssembly;
+  if (Dives && Dives) {
+    for (let i = 0; i < Dives; ++i) {
+      diveInfo.push({ diveCode: '', difficulty: '', status: -2, diveName: '' });
+    }
+  }
+  this.setState({
+    mode: 1, modalTitle: 'Add Diver',
+    open: true,
+    diver: {
+      MatchAssemblyDiverId: -1, DiverId: -1, AreaId: -1, ClubName: '',
+      CodeId: -1, DiverCname: '', DiverEname: '', DiveInfo: diveInfo, MatchAssemblyId: Id } });
+};
+  getDiverInfoStyle = (status) => {
     let bg = '', fg = 'white';
     switch (status) {
-        case -2:
-            //init
-            bg = 'white'; fg = 'grey';
-            break;
-        case -1:
-            //invalid input
-            bg = 'red';
-            break;
-        case 0:
-            //normal and target
-            bg = 'green';
-            break;
-        case 1:
-            //normal but value is new to db
-            bg = 'blue';
-            break;
-        default:
-            //unknown case
-            bg = 'black';
-            break;
+      case -2:
+        //init
+        bg = 'white'; fg = 'grey';
+        break;
+      case -1:
+        //invalid input
+        bg = 'red';
+        break;
+      case 0:
+        //normal and target
+        bg = 'green';
+        break;
+      case 1:
+        //normal but value is new to db
+        bg = 'blue';
+        break;
+      default:
+        //unknown case
+        bg = 'black';
+        break;
     }
     return { borderWidth: 1, borderStyle: 'solid', borderColor: bg, color: fg };
   };
-  const getDiverInfoHelperText = (status, diveName) => {
-      let text = '';
-      switch (status) {
-          case -2:
-              //init
-              text = 'Please input the dive code first. The corresponding difficulty will be shown if available';
-              break;
-          case -1:
-              //invalid input
-              text = 'Dive code input is invalid. Please check again';
-              break;
-          case 0:
-              //normal and target
-              text = diveName;
-              break;
-          case 1:
-              //normal but value is new to db
-              text = diveName + '. Please input the difficulty as current database does not have the record';
-              break;
-          default:
-              //unknown case
-              text = 'Unknown error';
-              break;
-      }
-      return text;
+  getDiverInfoHelperText = (status, diveName) => {
+    let text = '';
+    switch (status) {
+      case -2:
+        //init
+        text = 'Please input the dive code first. The corresponding difficulty will be shown if available';
+        break;
+      case -1:
+        //invalid input
+        text = 'Dive code input is invalid. Please check again';
+        break;
+      case 0:
+        //normal and target
+        text = diveName;
+        break;
+      case 1:
+        //normal but value is new to db
+        text = diveName + '. Please input the difficulty as current database does not have the record';
+        break;
+      default:
+        //unknown case
+        text = 'Unknown error';
+        break;
+    }
+    return text;
   };
-  return (
-      <React.Fragment>
-        <div aria-label={'header'}>
-          <Typography component="h3" variant="h5" color="inherit" align={"center"}>
-            { matchEnName }
-          </Typography>
-          <Typography component="h3" variant="subtitle1" color="inherit" align={"center"}>
-            { matchAssemblyEnName }
-          </Typography>
-        </div>
-        <Dialog open={modelState.fetching}>
-          <DialogContent>
+  handleSubmitMatchAssemblyDiverForm = () => {
+      let {
+        diver: {
+      MatchAssemblyDiverId, Id, AreaId, ClubName, CodeId,
+      DiverCname, DiverEname, DiveInfo, CreatedBy, MatchAssemblyId }, mode } = this.state;
+      console.log(this.state.diver);
+      let { Dives } = this.props.state.targetAssembly;
+      if (mode === 1) {
+        //add diver to the match assembly
+        if (!AreaId || !CodeId || !DiverEname || !DiveInfo) {
+          alert('Please fill in all the required fields');
+        } else if (Number(DiveInfo.length) !== Dives) {
+          alert('Please fill in all the dive info with dive codes and difficulties');
+        } else {
+          this.setState({ loading: true });
+          //with all data -> call api
+          apiAddMatchAssemblyDiver(this.state.diver)
+              .then(res => {
+                if (res.status === 200 && res.data.rtnCode === 0) {
+                  console.log('submit success');
+                  this.refreshDiverList();
+                  this.setState({ open: false });
+                } else {
+                  console.log('submit failed');
+                  alert('API Error: ' + res.data.description);
+                }
+              })
+              .catch(err => console.error(err))
+              .finally(() => {
+                this.setState({ loading: false });
+              });
+        }
+      } else if (mode === 2) {
+        //edit the diver information
+      } else {
+        //delete the diver from the assembly
+      }
+  };
+  getConstants() {
+    let { StageType, HeightType } = this.props.state.targetAssembly;
+    let p = [], areas = [], difficulties = [], codes = [];
+    p.push(apiGetAreas());
+    p.push(apiGetAllDifficulties());
+    p.push(apiGetCodes());
+    Promise.all(p)
+        .then( result => {
+          if (!CheckResponse(result)) throw 'API Error';
+          else return result.map((r,i) => r.data.data);
+        })
+        .then ( data => {
+          let [ _areas, _diffs, _codes ] = data;
+          areas = _areas;
+          difficulties = _diffs;
+          codes = _codes;
+        })
+        .catch( err => {
+          console.error(err);
+        })
+        .finally(() => {
+          this.setState({
+            constants: { areas: areas, difficulties: difficulties, codes: codes }
+          });
+        });
+  }
+  componentDidMount() {
+    this.getConstants();
+    this.refreshDiverList();
+  }
+  refreshDiverList() {
+    let { targetAssembly: { Id: matchAssemblyId}, targetMatch: { matchId } } = this.props.state;
+    let p = [], _MatchAssemblyDivers = null, _MatchDivers = null;
+    p.push(apiGetMatchAssemblyDivers(matchAssemblyId));
+    p.push(apiGetMatchDivers(matchId));
+    Promise.all(p)
+        .then(pres => {
+          let result = pres.filter(r => r.status === 200 && r.data.rtnCode === 0);
+          if (result.length !== p.length) throw 'Promise Error in refreshDiverList';
+          else return result.map(r => r.data.data);
+        })
+        .then(result => {
+          let [ MatchAssemblyDivers, MatchDivers ] = result;
+          _MatchAssemblyDivers = MatchAssemblyDivers;
+          _MatchDivers = MatchDivers;
+          // this.setState({ diverList: MatchAssemblyDivers, matchDiverList: MatchDivers });
+        })
+        .catch(err => console.error(err))
+        .finally((res) => {
+            this.setState({ fetching: false, diverList: _MatchAssemblyDivers, matchDiverList: _MatchDivers  });
+        });
+  }
+  render() {
+    const classes = useStyles;
+    let { areas, difficulties, codes } = this.state.constants;
+    let {
+      mode, open, modelTitle, fetching, diverList, matchDiverList,
+      diver: { MatchAssemblyDiverId, DiverId, AreaId, ClubName, CodeId, DiverCname, DiverEname, DiveInfo} } = this.state;
+    let {
+      actions: {
+        handleSubmitMatchAssemblyDiverForm, handleSubmitAreaForm, handleSubmitCodeForm, getDiverFormConstants },
+      state: {
+        targetMatch: { enName: matchEnName },
+        targetAssembly: { Id: matchAssemblyId, EnName: matchAssemblyEnName }
+      }
+    } = this.props;
+    return (
+        <React.Fragment>
+          <div aria-label={'header'}>
+            <Typography component="h3" variant="h5" color="inherit" align={"center"}>
+              { matchEnName }
+            </Typography>
+            <Typography component="h3" variant="subtitle1" color="inherit" align={"center"}>
+              { matchAssemblyEnName }
+            </Typography>
+          </div>
+          <div>
+            <Button variant={'contained'} onClick={ this.openAddAMatchAssemblyDiverForm }>Add Diver</Button>
+          </div>
+          <Dialog open={fetching}>
+            <DialogContent>
               <DialogContentText>Fetching Data...Please wait...</DialogContentText>
-          </DialogContent>
-        </Dialog>
-        <Grid container>
-          <Grid item xs={6} aria-label={'match diver list'}>
+            </DialogContent>
+          </Dialog>
+          <Grid container>
+            <Grid item xs={4} aria-label={'match-diver-list'}>
+              {
+                matchDiverList ?
+                    (
+                        <List>
+                          {
+                            matchDiverList.map(({ Diver: {Id, ClubName, DiverEname}, AreaName, CodeName}, index) => {
+                                  return (
+                                      <React.Fragment key={index}>
+                                      <ListItem>
+                                        <ListItemText primary={DiverEname} secondary={CodeName + ' ' + AreaName + ' ' + ClubName}/>
+                                      </ListItem>
+                                      {
+                                        ((index+1) !== matchDiverList.length) ?
+                                            <Divider variant="inset" component="li" key={'divider-' + index} />
+                                            : <React.Fragment/>
+                                      }
+                                      </React.Fragment>
+                                  );
+                                }
+                            )
+                          }
+                        </List>
+                    ): <React.Fragment/>
+              }
+            </Grid>
+            <Grid item xs={2} aria-label={'assign-button'}>
+              <Button>
+                <ArrowForwardOutlinedIcon/>
+              </Button>
+            </Grid>
+            <Grid item xs={6} aria-label={'current-assembly-diver-list'} style={{
+              borderColor: 'grey', borderWidth: 1, borderStyle: 'solid', borderRadius: 25 }}>
+              {
+                diverList ?
+                    <List>
+                      {
+                        diverList.map(({
+                                                    Diver : { Id: DiverId, DiverCname, DiverEname, AreaId, CodeId },
+                                                    MatchAssemblyDiverInfo: { Id: MatchAssemblyDiverId, DiveInfo: DiveInfoStr, Ordering },
+                                                    AreaName, CodeName}, index) => {
+                          let DiveInfo = [];
+                          try {
+                            DiveInfo = JSON.parse(DiveInfoStr.replace(/'/g, '"'));
+                            if (!DiveInfo) console.log('empty dive info at index ' + index);
+                          } catch {
+                            console.log(DiveInfoStr);
+                            console.log('empty or invalid dive info at index ' + index);
+                          }
+                          return (
+                              <React.Fragment key={index}>
+                              <ListItem key={index}>
+                                <Grid container>
+                                  <Grid item xs={1}>{CodeName}</Grid>
+                                  <Grid item xs={1}>{AreaName}</Grid>
+                                  <Grid item xs={2}>{ DiverEname }</Grid>
+                                  <Grid item xs={8}>
+                                    <Table aria-label={'dive-info-table'} className={classes.thinTable}>
+                                      <TableHead>
+                                        <TableRow>
+                                          <TableCell padding={'none'} className={classes.thinCell}>Dive #</TableCell>
+                                          <TableCell padding={'none'} className={classes.thinCell}>Code</TableCell>
+                                          <TableCell padding={'none'} className={classes.thinCell}>Difficulty</TableCell>
+                                          <TableCell padding={'none'} className={classes.thinCell}> </TableCell>
+                                        </TableRow>
+                                      </TableHead>
+                                      <TableBody>
+                                        {
+                                          DiveInfo ?
+                                              DiveInfo.map(({diveCode, difficulty}, di) => {
+                                                return (
+                                                    <TableRow key={di}>
+                                                      <TableCell padding={'none'} className={classes.thinCell}>{di+1}</TableCell>
+                                                      <TableCell padding={'none'} className={classes.thinCell}>{diveCode}</TableCell>
+                                                      <TableCell padding={'none'} className={classes.thinCell}>{difficulty}</TableCell>
+                                                      <TableCell padding={'none'} className={classes.thinCell}>
+                                                        <IconButton size={'small'}>
+                                                          <EditIcon fontSize={'small'}/>
+                                                        </IconButton>
+                                                      </TableCell>
+                                                    </TableRow>
+                                                );
+                                              }) : <React.Fragment/>
+                                        }
+                                      </TableBody>
+                                    </Table>
+                                  </Grid>
+                                </Grid>
+                              </ListItem>
+                              {
+                                ((index+1) !== diverList.length) ?
+                                  <Divider variant="inset" component="li" key={'divider-' + index} />
+                                  : <React.Fragment/>
+                              }
+                              </React.Fragment>
+                          );
+                        })
+                      }
+                    </List>
+                    :
+                    <React.Fragment/>
+              }
+            </Grid>
           </Grid>
-          <Grid item xs={6} aria-label={'current assembly diver list'}>
-            <div>
-              <button onClick={ openAddAMatchAssemblyDiverForm }>Add Diver</button>
-            </div>
-          </Grid>
-        </Grid>
-        <Dialog
-            aria-labelledby="add-diver-transition-modal"
-            aria-describedby="add-diver-description-transition-modal"
-            open={open}
-            onClose={handleModalClose}>
-          <DialogTitle className={classes.paper}>
-            { modelTitle }
-          </DialogTitle>
-          <DialogContent>
+          <Dialog
+              aria-labelledby="add-diver-transition-modal"
+              aria-describedby="add-diver-description-transition-modal"
+              open={open}
+              onClose={this.handleModalClose}>
+            <DialogTitle className={classes.paper}>
+              { modelTitle }
+            </DialogTitle>
+            <DialogContent>
               <DialogContentText>
-              { mode === 1 ? ('The following diver will be added to : ' +  matchAssemblyEnName ) :
-                  'Manipulating the diver in ' +  matchAssemblyEnName }
+                { mode === 1 ? ('The following diver will be added to : ' +  matchAssemblyEnName ) :
+                    'Manipulating the diver in ' +  matchAssemblyEnName }
               </DialogContentText>
               <TextField
                   label="Diver Chinese Name"
                   fullWidth
                   className={classes.textField}
                   value={DiverCname || ''}
-                  onChange={ handleDiverChange('DiverCname') }
+                  onChange={ this.handleDiverChange('DiverCname') }
                   helperText={'Enter the chinese name of the diver'}
               />
               <TextField
@@ -785,7 +982,7 @@ const MatchAssemblyDiverForm = ({
                   required
                   className={classes.textField}
                   value={DiverEname || ''}
-                  onChange={ handleDiverChange('DiverEname') }
+                  onChange={ this.handleDiverChange('DiverEname') }
                   helperText={'Enter the english name of the diver'}
               />
               <Grid container>
@@ -797,7 +994,7 @@ const MatchAssemblyDiverForm = ({
                       required
                       className={classes.textField}
                       value={AreaId || ''}
-                      onChange={ handleDiverChange('AreaId') }
+                      onChange={ this.handleDiverChange('AreaId') }
                       helperText={'Select the Area. Click (Add Area) if option is not available'}
                       margin={'normal'}
                   >
@@ -821,7 +1018,7 @@ const MatchAssemblyDiverForm = ({
                       required
                       className={classes.textField}
                       value={CodeId || ''}
-                      onChange={ handleDiverChange('CodeId') }
+                      onChange={ this.handleDiverChange('CodeId') }
                       helperText={'Select the Code. Click (Add Code) if option is not available'}
                       margin={'normal'}
                   >
@@ -841,61 +1038,47 @@ const MatchAssemblyDiverForm = ({
                   fullWidth
                   className={classes.textField}
                   value={ClubName || ''}
-                  onChange={ handleDiverChange('ClubName') }
+                  onChange={ this.handleDiverChange('ClubName') }
                   helperText={'Name of the club the diver belongs to. optional'}
               />
               {
-                  DiveInfo ? DiveInfo.map(({ diveCode, difficulty, status, diveName }, index) => {
-                      return (
-                      <Grid container key={index} style={getDiverInfoStyle(status)}>
-                          <Grid item xs={6}>
-                              <TextField
-                                  label={"Dive code #" + (index + 1)}
-                                  fullWidth
-                                  className={classes.textField}
-                                  value={diveCode || ''}
-                                  onChange={ handleDiveInfoChange('diveCode', index) }
-                                  helperText={'Dive Code of the corresponding dive'}
-                              />
-                          </Grid>
-                          <Grid item xs={6}>
-                              <TextField
-                                  label={"Difficulty"}
-                                  fullWidth
-                                  className={classes.textField}
-                                  value={difficulty || ''}
-                                  onChange={ handleDiveInfoChange('difficulty', index) }
-                                  helperText={getDiverInfoHelperText(status, diveName)}
-                              />
-                           </Grid>
+                DiveInfo ? DiveInfo.map(({ diveCode, difficulty, status, diveName }, index) => {
+                  return (
+                      <Grid container key={index} style={this.getDiverInfoStyle(status)}>
+                        <Grid item xs={6}>
+                          <TextField
+                              label={"Dive code #" + (index + 1)}
+                              fullWidth
+                              className={classes.textField}
+                              value={diveCode || ''}
+                              onChange={ this.handleDiveInfoChange('diveCode', index) }
+                              helperText={'Dive Code of the corresponding dive'}
+                          />
+                        </Grid>
+                        <Grid item xs={6}>
+                          <TextField
+                              label={"Difficulty"}
+                              fullWidth
+                              className={classes.textField}
+                              value={difficulty || ''}
+                              onChange={ this.handleDiveInfoChange('difficulty', index) }
+                              helperText={this.getDiverInfoHelperText(status, diveName)}
+                          />
+                        </Grid>
                       </Grid>
-                      );
-                  }) : <React.Fragment/>
+                  );
+                }) : <React.Fragment/>
               }
               <DialogActions>
-                <Button onClick={() => {
-                    handleSubmitMatchAssemblyDiverForm(
-                        mode,
-                        {
-                            MatchAssemblyDiverId: MatchAssemblyDiverId,
-                            Id: DiverId,
-                            AreaId: AreaId,
-                            ClubName: ClubName,
-                            CodeId: CodeId,
-                            DiverCname: DiverCname,
-                            DiverEname: DiverEname,
-                            DiveInfo: DiveInfo,
-                            CreatedBy: 'dummy'
-                        })
-                    }
-                } color={'primary'}>Submit</Button>
-                <Button onClick={handleModalClose} color={'secondary'}>Close</Button>
+                <Button onClick={this.handleSubmitMatchAssemblyDiverForm} color={'primary'}>Submit</Button>
+                <Button onClick={this.handleModalClose} color={'secondary'}>Close</Button>
               </DialogActions>
-          </DialogContent>
-        </Dialog>
-      </React.Fragment>
-  )
-};
+            </DialogContent>
+          </Dialog>
+        </React.Fragment>
+    )
+  }
+}
 
 const MatchList = ({ state: { matchList }, actions: { openAddMatchForm, openIndividualMatch} }) => {
   const classes = useStyles;
@@ -1006,9 +1189,15 @@ const IndividualMatch = ({ state: {
                               return (
                                   <TableRow key={i}>
                                     <TableCell>
-                                      <button onClick={() => openIndividualMatchAssemblyDiverForm(matchAssemblies[i])}>
+                                      <Button
+                                          variant={'outlined'}
+                                          color={'primary'}
+                                          onClick={(event) => {
+                                          event.preventDefault();
+                                          openIndividualMatchAssemblyDiverForm(matchAssemblies[i])
+                                        }}>
                                         Manage
-                                      </button>
+                                      </Button>
                                     </TableCell>
                                     <TableCell>{ZhName}</TableCell>
                                     <TableCell>{EnName}</TableCell>
@@ -1178,7 +1367,8 @@ const actions = {
   handleSubmitMatchAssemblyDiverForm: (store, mode, diver) => {
     let {
         MatchAssemblyDiverId, Id, AreaId, ClubName, CodeId,
-        DiverCname, DiverEname, DiveInfo, CreatedBy} = diver;
+        DiverCname, DiverEname, DiveInfo, CreatedBy, MatchAssemblyId } = diver;
+    console.log(JSON.stringify(diver));
     let { Dives } = store.state.targetAssembly;
     if (mode === 1) {
         //add diver to the match assembly
@@ -1328,7 +1518,6 @@ const actions = {
   },
   openIndividualMatchAssemblyDiverForm: (store, matchAssembly) => {
     store.setState({ ...store.state, loading: true, targetAssembly: matchAssembly });
-    console.log(matchAssembly);
     let p = [], matchDivers = [], matchAssemblyDivers = [];
     p.push(apiGetMatchDivers(store.state.targetMatch.matchId));
     p.push(apiGetMatchAssemblyDivers(store.state.targetAssembly.Id));
@@ -1381,7 +1570,7 @@ const MatchSetting = () => {
   React.useEffect(() => {
     globalActions.refreshMatchList();
     globalActions.getMatchFormConstants();
-  }, [globalState.callRefresh]);
+  }, []);
   return (
     <React.Fragment>
       {

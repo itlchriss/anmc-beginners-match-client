@@ -39,8 +39,8 @@ export const apiAddMatchAssembly = matchAssembly => matchAssembliesTableRequest.
 export const apiEditMatchAssembly = matchAssembly => matchAssembliesTableRequest.put('', matchAssembly, config);
 export const apiDeleteMatchAssembly = matchAssembly => matchAssembliesTableRequest.delete('', getDeleteBody(matchAssembly));
 //Diver Table api calls
-export const apiGetMatchDivers = matchId => diverTableRequest.get('/match/matchId/' + matchId);
-export const apiGetMatchAssemblyDivers = matchAssemblyId => diverTableRequest.get('/matchAssembly/matchAssemblyId/' + matchAssemblyId);
+export const apiGetMatchDivers = matchId => diverTableRequest.get('/match/' + matchId);
+export const apiGetMatchAssemblyDivers = matchAssemblyId => diverTableRequest.get('/matchAssembly/' + matchAssemblyId);
 export const apiAddMatchAssemblyDiver = matchAssemblyDiver => diverTableRequest.post('/matchAssembly', matchAssemblyDiver);
 export const apiEditMatchAssemblyDiver = matchAssemblyDiver => diverTableRequest.put('/matchAssembly', matchAssemblyDiver);
 //Area Table api calls
