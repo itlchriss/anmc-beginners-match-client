@@ -1,8 +1,18 @@
 import axios from 'axios';
 
-const APIHost = 'http://localhost';
+const DebugHost = 'http://localhost:5000';
+const DebugBase = '/api';
+
+let APIHost = 'http://localhost';
 // const APIHost = 'http://10.211.55.6';
-const APIBase = '/ANMCApi/api';
+let APIBase = '/ANMCApi/api';
+
+//for debeug
+// APIHost = DebugHost;
+// APIBase = DebugBase;
+//
+
+
 const config = { headers : { 'Content-Type': 'application/json;charset=UTF-8'}};
 function getDeleteBody(data) {
     let c = config;
@@ -43,6 +53,7 @@ export const apiGetMatchDivers = matchId => diverTableRequest.get('/match/' + ma
 export const apiGetMatchAssemblyDivers = matchAssemblyId => diverTableRequest.get('/matchAssembly/' + matchAssemblyId);
 export const apiAddMatchAssemblyDiver = matchAssemblyDiver => diverTableRequest.post('/matchAssembly', matchAssemblyDiver);
 export const apiEditMatchAssemblyDiver = matchAssemblyDiver => diverTableRequest.put('/matchAssembly', matchAssemblyDiver);
+export const apiDeleteMatchAssemblyDiver = MatchAssemblyDiverId => diverTableRequest.delete('/matchAssembly/' + MatchAssemblyDiverId);
 //Area Table api calls
 export const apiGetAreas = () => areaTableRequest.get('');
 export const apiAddArea = area => areaTableRequest.post('', area);
