@@ -1,10 +1,17 @@
 const DEBUG = true;
 
-const Config = ({ debug = DEBUG }) => {
+const ComponentIndexConfiguration = {
+  MatchSettingConfiguration: {
+    MatchListIndex: 1,
+    MatchConfigurationIndex: 2
+  }
+};
+
+const SystemConfiguration = ({ debug = DEBUG }) => {
   return {
     apiBase: "",
     debug: debug
   };
 };
 
-export default Config;
+export { ComponentIndexConfiguration, SystemConfiguration };

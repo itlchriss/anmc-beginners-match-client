@@ -1,4 +1,4 @@
-import React from "react";
+import React, {Component} from "react";
 import
 {
   AppBar,
@@ -44,6 +44,10 @@ import ListSubheader from "@material-ui/core/ListSubheader";
 import ListItemIcon from "@material-ui/core/ListItemIcon";
 import MaterialTable from "material-table";
 import IconButton from "@material-ui/core/IconButton";
+import MatchList from "./matchSettingComponents/matchList";
+import MatchConfiguration from './matchSettingComponents/matchConfiguration';
+
+import { ComponentIndexConfiguration } from '../config';
 
 const useStyles = makeStyles(theme => ({
   container: {
@@ -175,28 +179,7 @@ function GetFormAction(mode) {
   }
   return action;
 }
-function GetContent(globalState, globalActions) {
-  let { componentIndex } = globalState;
-  let component = null;
-  switch(componentIndex) {
-    case 1:
-      component = (<MatchList state={globalState} actions={globalActions} />); break;
-    case 2:
-      component = (<MatchForm actions={globalActions} state={globalState}/>); break;
-    case 3:
-      component = (<IndividualMatch actions={globalActions} state={globalState} />); break;
-    case 4:
-      component = (<MatchAssemblyForm actions={globalActions} state={globalState}/> ); break;
-    case 5:
-      component = (<MatchAssemblyDiverComponent actions={globalActions} state={globalState} />); break;
-      // component = (<MatchAssemblyDiverForm actions={globalActions} state={globalState} />); break;
-    case 6:
-      component = (<ConstantSetting actions={globalActions} state={globalState}/>); break;
-    default:
-      component = (<p>Invalid Component Index</p>); break;
-  }
-  return component;
-}
+
 
 const ConstantSetting = ({
   state: {
@@ -463,138 +446,7 @@ const MatchForm = ({ state: { targetMatch: { zhName, enName, startDate, endDate,
   );
 };
 
-class MatchAssemblyForm extends React.Component {
-    constructor(props) {
-        super(props);
-    }
-    componentDidMount() {
-    }
-    render () {
-        const classes = useStyles;
-        const formTitle = GetFormAction(this.props.mode) + ' Assembly';
-        let { zhName: matchZhName, enName: matchEnName, matchId } = this.props.matchInfo;
-        let {
-            Id, ZhName, EnName, StageTypeName, StageType, HeightType, HeightTypeName, NumOfExecJudges,
-            NumOfSyncJudges, Dives
-        } = this.props.matchAssemblyInfo;
-        const handleChange = this.props.handleChange;
-        return (
-            <React.Fragment>
-                <h3>Match: { matchEnName }</h3>
-                <h4>{formTitle}</h4>
-                <Paper className={classes.container}>
-                    <TextField
-                        label="Chinese Name"
-                        fullWidth
-                        className={classes.textField}
-                        value={ZhName || ''}
-                        onChange={ handleChange('ZhName') }
-                        helperText={'Enter the chinese name of the assembly'}
-                    />
-                    <TextField
-                        label="English Name"
-                        fullWidth
-                        className={classes.textField}
-                        value={EnName || ''}
-                        onChange={ handleChange('EnName') }
-                        helperText={'Enter the english name of the assembly'}
-                    />
-                    <TextField
-                        label="Type of Stage"
-                        fullWidth
-                        select
-                        className={classes.textField}
-                        value={StageType || ''}
-                        onChange={ handleChange('StageType') }
-                        helperText={'Select the type of stage'}
-                        margin={'normal'}
-                    >
-                        {
-                            stageTypes && stageTypes.length > 0 ?
-                                stageTypes.map(({ Id, Name }, i) => {
-                                    return (
-                                        <MenuItem key={i} value={Id}>
-                                            {Name}
-                                        </MenuItem>
-                                    );
-                                }) : ''
-                        }
-                    </TextField>
-                    <TextField
-                        label="Height of Stage"
-                        fullWidth
-                        select
-                        className={classes.textField}
-                        value={localHeightType || ''}
-                        onChange={ handleChange('localHeightType') }
-                        helperText={'Select the height of the stage'}
-                        margin={'normal'}
-                    >
-                        {
-                            heightTypes && heightTypes.length > 0 ?
-                                heightTypes.map(({ Id, HeightM }, i) => {
-                                    return(
-                                        <MenuItem key={i} value={Id}>
-                                            {HeightM}
-                                        </MenuItem>);
-                                }) : ''
-                        }
-                    </TextField>
-                    <Grid container>
-                        <Grid item xs={4}>
-                            <TextField
-                                label="No. Of Execution Judges"
-                                fullWidth
-                                className={classes.textField}
-                                value={localNumOfExecJudges || 0}
-                                onChange={ handleChange('localNumOfExecJudges') }
-                                helperText={'Enter the number of Execution judges. Only number is accepted'}
-                            />
-                        </Grid>
-                        <Grid item xs={4}>
-                            <TextField
-                                label="No. Of Synchronization Judges"
-                                fullWidth
-                                className={classes.textField}
-                                value={localNumOfSyncJudges || 0}
-                                onChange={ handleChange('localNumOfSyncJudges') }
-                                helperText={'Enter the number of Synchronization judges. Only number is accepted'}
-                            />
-                        </Grid>
-                        <Grid item xs={4}>
-                            <TextField
-                                label="No. Of Dives"
-                                fullWidth
-                                required
-                                className={classes.textField}
-                                value={localDives || 0}
-                                onChange={ handleChange('localDives') }
-                                helperText={'Enter the number of Dives. Only number is accepted'}
-                            />
-                        </Grid>
-                    </Grid>
-                    <div>
-                        <button onClick={() => handleMatchAssemblyFormSubmit(
-                            mode,
-                            {
-                                id: Id,
-                                Match: matchId,
-                                ZhName: localZhName,
-                                EnName: localEnName,
-                                NumOfExecJudges: localNumOfExecJudges,
-                                NumOfSyncJudges: localNumOfSyncJudges,
-                                StageType: localStageType,
-                                HeightType: localHeightType,
-                                Dives: localDives,
-                                CreatedBy: 'dummy'
-                            })
-                        }>Submit</button>
-                    </div>
-                </Paper>
-            </React.Fragment>
-        );
-    }
-}
+
 
 class MatchAssemblyDiverComponent extends React.Component
 {
@@ -1116,332 +968,7 @@ class MatchAssemblyDiverComponent extends React.Component
   }
 }
 
-const MatchList = ({ state: { matchList }, actions: { openAddMatchForm, openIndividualMatch} }) => {
-  const classes = useStyles;
-  const handleAddMatchClick = () => event => {
-    event.preventDefault();
-    openAddMatchForm();
-  };
-  const handleOpenIndividualMatch = (matchId) => event => {
-    event.preventDefault();
-    openIndividualMatch(matchId);
-  };
-  return (
-      <React.Fragment>
-        <div>
-          <Button onClick={handleAddMatchClick} variant={'outlined'} color={'primary'}>Add Match</Button>
-        </div>
-        {
-          (!matchList || matchList.length === 0) ? ''
-              : matchList.map((match, i) => {
-                return (
-                    <ButtonBase
-                        onClick={handleOpenIndividualMatch(match.matchId)}
-                        focusRipple
-                        key={i}
-                        className={classes.complexButton}
-                        focusVisibleClassName={classes.focusVisible}
-                        style={{width: '33%' }}>
-                                    <span className={classes.complexButtonBackdrop} />
-                                    <span className={classes.complexButtonContext}>
-                          <Typography
-                              component="span"
-                              variant="subtitle1"
-                              color="inherit"
-                              className={classes.complexButtonTitle}
-                          >
-                            {match.zhName}<br/>
-                            {match.enName}<br/>
-                            {match.startDate + ' - ' + match.endDate}
-                            <span className={classes.complexButtonMarked} />
-                          </Typography>
-                        </span>
-                    </ButtonBase>
-                );
-              })
-        }
-      </React.Fragment>
-  );
-};
 
-const IndividualMatchBak = ({ state: {
-  targetMatch: {
-    matchId, loading, matchAssemblies, zhName, enName, startDate, endDate
-  }}, actions: {
-  openEditAssemblyForm, openAddAssemblyForm, refreshIndividualMatch, openIndividualMatchAssemblyDiverForm,
-  goToComponent, handleMatchAssemblyFormSubmit
-} }) => {
-  let [state, setState] = React.useState({
-    deleteDialogOpen: false, targetAssembly: {}
-  });
-  let { deleteDialogOpen, targetAssembly } = state;
-  const deleteAssemblyPrompt = (item) => event => {
-    event.preventDefault();
-    setState({ ...state, deleteDialogOpen: !!item, targetAssembly: item });
-  };
-  return (
-      <React.Fragment>
-        <div>
-          <Typography component="h3" variant="h5" color="inherit" align={"center"}>
-            { zhName }
-          </Typography>
-          <Typography component="h3" variant="h5" color="inherit" align={"center"}>
-            { enName }
-          </Typography>
-          <Typography component="h5" variant="h5" color="inherit" align={"center"}>
-            { startDate + " - " + endDate }
-          </Typography>
-        </div>
-        <div>
-          <div>
-            <button onClick={() => goToComponent(6)}>Area/Code</button>
-            <button onClick={() => openAddAssemblyForm()}>Add Match Assembly</button>
-            <button onClick={() => refreshIndividualMatch(matchId)}>Refresh</button>
-          </div>
-          <Paper>
-            {
-              matchAssemblies && matchAssemblies.length > 0 ?
-                  (
-                      <Table size={'small'}>
-                        <TableHead>
-                          <TableRow>
-                            <TableCell> </TableCell>
-                            <TableCell>Chinese Name</TableCell>
-                            <TableCell>English Name</TableCell>
-                            <TableCell>Type of Stage</TableCell>
-                            <TableCell>Height of Stage</TableCell>
-                            <TableCell>No. Of Dives</TableCell>
-                            <TableCell>No. Of Judges(E/S)</TableCell>
-                            <TableCell> </TableCell>
-                            <TableCell> </TableCell>
-                          </TableRow>
-                        </TableHead>
-                        <TableBody>
-                          {
-                            matchAssemblies.map(({
-                              Id, MatchId, ZhName, EnName, StageTypeName, HeightTypeName, NumOfExecJudges,
-                              NumOfSyncJudges, Dives
-                            }, i) => {
-                              return (
-                                  <TableRow key={i}>
-                                    <TableCell>
-                                      <Button
-                                          variant={'outlined'}
-                                          color={'primary'}
-                                          onClick={(event) => {
-                                          event.preventDefault();
-                                          openIndividualMatchAssemblyDiverForm(matchAssemblies[i])
-                                        }}>
-                                        Manage
-                                      </Button>
-                                    </TableCell>
-                                    <TableCell>{ZhName}</TableCell>
-                                    <TableCell>{EnName}</TableCell>
-                                    <TableCell>{StageTypeName}</TableCell>
-                                    <TableCell>{HeightTypeName}</TableCell>
-                                    <TableCell>{Dives ? Dives : 'N/A'}</TableCell>
-                                    <TableCell>{NumOfExecJudges + '/' + NumOfSyncJudges}</TableCell>
-                                    <TableCell>
-                                      <button onClick={() => openEditAssemblyForm(matchAssemblies[i])}>Edit</button>
-                                    </TableCell>
-                                    <TableCell>
-                                      <button onClick={deleteAssemblyPrompt(matchAssemblies[i])}>Delete</button>
-                                    </TableCell>
-                                  </TableRow>
-                              );
-                            })
-                          }
-                        </TableBody>
-                      </Table>
-                  ) :
-                  ''
-            }
-          </Paper>
-        </div>
-        {state.targetAssembly ?
-            (<Dialog open={deleteDialogOpen} onClose={deleteAssemblyPrompt(null)}>
-              <DialogTitle>Delete Assembly</DialogTitle>
-              <DialogContent>
-                <DialogContentText>Deleting...{state.targetAssembly.EnName}</DialogContentText>
-                <DialogActions>
-                  <Button onClick={() => handleMatchAssemblyFormSubmit(3, state.targetAssembly)}
-                          color={'secondary'}>Confirm</Button>
-                  <Button onClick={() => deleteAssemblyPrompt(null)} color={'primary'}>Close</Button>
-                </DialogActions>
-              </DialogContent>
-            </Dialog>) : <React.Fragment/>
-        }
-      </React.Fragment>
-  );
-};
-
-class IndividualMatch extends React.Component{
-    constructor(props) {
-        super(props);
-        this.state = {
-            deleteDialogOpen: false,
-            addOrEditDialogOpen: false,
-            matchAssemblyControlMode: 1,
-            targetAssembly: {},
-            matchInfo: props.targetMatch,
-            matchAssemblyInfo: {},
-            loading: false
-        };
-    }
-    componentDidMount() {
-        this.refreshCurrentMatch();
-    }
-    refreshCurrentMatch() {
-        console.log('refresh');
-        this.setState({ loading: true });
-        let { matchId } = this.state.matchInfo;
-        let matchInfoContainer = {};
-        apiGetMatchAssembliesByMatchId({matchId})
-            .then(res => {
-                if (res && res.status === 200 && res.data && res.data.rtnCode === 0) {
-                    return res.data;
-                } else {
-                    return { match: null, matchAssemblies: null };
-                }
-            })
-            .then (data => {
-                if (data && data) {
-                    let matchId = matchId;
-                    let { match: { zhName, enName, startDate, endDate }, matchAssemblies } = data;
-                    matchInfoContainer = {
-                        zhName: zhName, enName: enName, matchId: matchId,
-                        startDate: startDate, endDate: endDate,
-                        matchAssemblies: matchAssemblies
-                    };
-                }
-            })
-            .catch(err => {
-                console.log(err);
-            })
-            .finally(() => {
-                this.setState({ loading: false, matchInfo: matchInfoContainer });
-            });
-    }
-    handleMatchAssemblyFormSubmit(mode, targetAssembly) {
-
-    }
-    render() {
-        let { matchId, loading, matchAssemblies, zhName, enName, startDate, endDate } = this.state.matchInfo;
-        let { goToComponent, openIndividualMatchAssemblyDiverForm } = this.props.actions;
-        return (
-            <React.Fragment>
-                <MatchAssemblyForm
-                    matchInfo={this.state.matchInfo}
-                    matchAssemblyInfo={this.state.matchAssemblyInfo}
-                    mode={this.state.matchAssemblyControlMode}
-                    open={this.state.addOrEditDialogOpen}
-                    handleChange={(name) => (event) => this.setState({ targetAssembly[name]: event.target.value })}
-                />
-                <div>
-                    <Typography component="h3" variant="h5" color="inherit" align={"center"}>
-                        { zhName }
-                    </Typography>
-                    <Typography component="h3" variant="h5" color="inherit" align={"center"}>
-                        { enName }
-                    </Typography>
-                    <Typography component="h5" variant="h5" color="inherit" align={"center"}>
-                        { startDate + " - " + endDate }
-                    </Typography>
-                </div>
-                <div>
-                    <div>
-                        <button onClick={() => goToComponent(6)}>Area/Code</button>
-                        <button onClick={() => {
-                            this.setState({
-                                matchAssemblyInfo: {},
-                                addOrEditDialogOpen: true,
-                                matchAssemblyControlMode: 1
-                            });
-                        }}>Add Match Assembly</button>
-                        <button onClick={this.refreshCurrentMatch}>Refresh</button>
-                    </div>
-                    <Paper>
-                        {
-                            matchAssemblies && matchAssemblies.length > 0 ?
-                                (
-                                    <Table size={'small'}>
-                                        <TableHead>
-                                            <TableRow>
-                                                <TableCell> </TableCell>
-                                                <TableCell>Chinese Name</TableCell>
-                                                <TableCell>English Name</TableCell>
-                                                <TableCell>Type of Stage</TableCell>
-                                                <TableCell>Height of Stage</TableCell>
-                                                <TableCell>No. Of Dives</TableCell>
-                                                <TableCell>No. Of Judges(E/S)</TableCell>
-                                                <TableCell> </TableCell>
-                                                <TableCell> </TableCell>
-                                            </TableRow>
-                                        </TableHead>
-                                        <TableBody>
-                                            {
-                                                matchAssemblies.map(({
-                                                                         Id, MatchId, ZhName, EnName, StageTypeName, HeightTypeName, NumOfExecJudges,
-                                                                         NumOfSyncJudges, Dives
-                                                                     }, i) => {
-                                                    return (
-                                                        <TableRow key={i}>
-                                                            <TableCell>
-                                                                <Button
-                                                                    variant={'outlined'}
-                                                                    color={'primary'}
-                                                                    onClick={(event) => {
-                                                                        event.preventDefault();
-                                                                        openIndividualMatchAssemblyDiverForm(matchAssemblies[i])
-                                                                    }}>
-                                                                    Manage
-                                                                </Button>
-                                                            </TableCell>
-                                                            <TableCell>{ZhName}</TableCell>
-                                                            <TableCell>{EnName}</TableCell>
-                                                            <TableCell>{StageTypeName}</TableCell>
-                                                            <TableCell>{HeightTypeName}</TableCell>
-                                                            <TableCell>{Dives ? Dives : 'N/A'}</TableCell>
-                                                            <TableCell>{NumOfExecJudges + '/' + NumOfSyncJudges}</TableCell>
-                                                            <TableCell>
-                                                                <button onClick={() =>
-                                                                    this.setState({
-                                                                        matchAssemblyInfo: matchAssemblies[i],
-                                                                        addOrEditDialogOpen: true,
-                                                                        matchAssemblyControlMode: 1
-                                                                    })}>Edit</button>
-                                                            </TableCell>
-                                                            <TableCell>
-                                                                <button onClick={() => {
-                                                                    this.setState({ deleteDialogOpen: true, targetAssembly: matchAssemblies[i] });
-                                                                }}>Delete</button>
-                                                            </TableCell>
-                                                        </TableRow>
-                                                    );
-                                                })
-                                            }
-                                        </TableBody>
-                                    </Table>
-                                ) :
-                                ''
-                        }
-                    </Paper>
-                </div>
-                <Dialog open={this.state.deleteDialogOpen} onClose={() => this.setState({ deleteDialogOpen: false })}>
-                    <DialogTitle>Delete Assembly</DialogTitle>
-                    <DialogContent>
-                        <DialogContentText>Deleting...{this.state.targetAssembly?.EnName}</DialogContentText>
-                        <DialogActions>
-                            <Button onClick={this.handleMatchAssemblyFormSubmit(3, this.state.targetAssembly)}
-                                    color={'secondary'}>Confirm</Button>
-                            <Button onClick={() => this.setState({ deleteDialogOpen: false })} color={'primary'}>Close</Button>
-                        </DialogActions>
-                    </DialogContent>
-                </Dialog>
-            </React.Fragment>
-        );
-    }
-}
 
 const actions = {
   getMatchFormConstants: (store) => {
@@ -1738,33 +1265,68 @@ const actions = {
 
 const useGlobal = useGlobalHook(React, initialState, actions);
 
-const MatchSetting = () => {
-  let [globalState, globalActions] = useGlobal();
-  const classes = useStyles();
-  React.useEffect(() => {
-    globalActions.refreshMatchList();
-    globalActions.getMatchFormConstants();
-  }, []);
-  return (
-    <React.Fragment>
-      {
-        globalState.loading ?
-            <div>Loading...</div>
-            :
+class MatchSetting extends React.Component {
+    constructor(props) {
+        super(props);
+        this.state = { currentIndex: 1, previousIndexStack: [], routeData: {} };
+        this.backToPreviousComponent = this.backToPreviousComponent.bind(this);
+        this.changeComponent = this.changeComponent.bind(this);
+    }
+    backToPreviousComponent() {
+        this.setState({ currentIndex: this.state.previousIndexStack.pop() });
+    }
+    changeComponent(index, routeData) {
+        let _stack = this.state.previousIndexStack;
+        _stack.push(this.state.currentIndex);
+        this.setState({ currentIndex: index, routeData: routeData, previousIndexStack: _stack });
+    }
+    GetContent(index) {
+        let { MatchSettingConfiguration: {
+                MatchListIndex,
+                MatchConfigurationIndex
+            }
+        } = ComponentIndexConfiguration;
+        let component = null;
+        const { routeData } = this.state;
+        switch(index) {
+            case MatchListIndex:
+                component = (<MatchList changeGlobalComponentHandler={this.changeComponent} />); break;
+            case MatchConfigurationIndex:
+                component = (<MatchConfiguration changeGlobalComponentHandler={this.changeComponent} routeData={routeData}/>); break;
+            // case 2:
+            //     component = (<MatchForm actions={globalActions} state={globalState}/>); break;
+            // case 3:
+            //     component = (<IndividualMatch actions={globalActions} state={globalState} />); break;
+            // case 4:
+            //     component = (<MatchAssemblyForm actions={globalActions} state={globalState}/> ); break;
+            // case 5:
+            //     component = (<MatchAssemblyDiverComponent actions={globalActions} state={globalState} />); break;
+            // // component = (<MatchAssemblyDiverForm actions={globalActions} state={globalState} />); break;
+            // case 6:
+            //     component = (<ConstantSetting actions={globalActions} state={globalState}/>); break;
+            default:
+                component = (<p>Invalid Component Index</p>); break;
+        }
+        return component;
+    }
+    render() {
+        let { currentIndex, previousIndexStack } = this.state;
+        return (
             <React.Fragment>
-              {
-                globalState.previousComponentIndex > 0 ?
-                    <div>
-                      <button onClick={() => globalActions.backToPreviousComponent()}>Back</button>
-                    </div> : ''
-              }
-              <div>
-                { GetContent(globalState, globalActions) }
-              </div>
+                {
+                    previousIndexStack ?
+                        <div>
+                            <button onClick={this.backToPreviousComponent}>Back</button>
+                        </div> : ''
+                }
+                <div>
+                    { this.GetContent(currentIndex) }
+                </div>
             </React.Fragment>
-      }
-    </React.Fragment>
-  );
-};
+        );
+    }
+}
+
+
 
 export default MatchSetting;

@@ -12,7 +12,7 @@ import Container from "@material-ui/core/Container";
 
 import { withRouter } from "react-router-dom";
 
-import Config from "../config";
+import { SystemConfiguration } from "../config";
 
 const useStyles = makeStyles(theme => ({
   "@global": {
@@ -42,7 +42,7 @@ const useStyles = makeStyles(theme => ({
 }));
 
 const loginSubmitHandler = (credential, errorHandler, successHandler) => {
-  const [{ apiBase, debug }, { id, password }] = (Config, credential);
+  const [{ apiBase, debug }, { id, password }] = (SystemConfiguration, credential);
   const validate = () => {
     //check parameter
     return true;
