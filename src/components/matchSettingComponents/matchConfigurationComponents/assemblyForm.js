@@ -20,12 +20,9 @@ import MenuItem from "@material-ui/core/MenuItem";
 class AssemblyForm extends React.Component {
     constructor(props) {
         super(props);
-        let _data = this.props.data || new Assembly();
         this.state = {
             loading: true,
-            constants: { heights: [], stages: [], parentData: this.props.parentData },
-            data: _data };
-        this.textFieldChangeHandler = this.textFieldChangeHandler.bind(this);
+            constants: { heights: [], stages: [] }};
     }
     componentDidMount() {
         let p = [];
@@ -47,17 +44,14 @@ class AssemblyForm extends React.Component {
                 this.setState({ loading: false });
             });
     }
-    textFieldChangeHandler = fieldName => event => {
-      this.setState({ data: { ...this.state.data, [fieldName]: event.target.value }});
-    };
     render() {
         const { loading, constants: { heights, stages } } = this.state;
         if (loading)
             return (<Preloader/>);
         else {
-            const { matchId } = this.state.constants.parentData;
-            const { title, open, classes, onCloseHandler, submitHandler } = this.props;
-            let { zhName, enName, stageType, heightType, numOfEJ, numOfSJ, dives, id } = this.state.data;
+            const {
+                data: { zhName, enName, stageType, heightType, numOfEJ, numOfSJ, dives, id },
+                title, open, classes, onCloseHandler, submitHandler, onTextFieldChangeHandler } = this.props;
             return (
                 <Dialog
                     open={open}>
@@ -75,20 +69,20 @@ class AssemblyForm extends React.Component {
                                     fullWidth
                                     className={classes.textField}
                                     value={zhName}
-                                    onChange={this.textFieldChangeHandler('zhName')}
+                                    onChange={onTextFieldChangeHandler('zhName')}
                                 />
                                 <TextField
                                     label="English Name"
                                     fullWidth
                                     className={classes.textField}
                                     value={enName}
-                                    onChange={this.textFieldChangeHandler('enName')}
+                                    onChange={onTextFieldChangeHandler('enName')}
                                 />
                                 <TextField
                                     select
                                     label="Height"
-                                    value={heightType}
-                                    onChange={this.textFieldChangeHandler('heightType')}
+                                    value={heightType || 0}
+                                    onClick={onTextFieldChangeHandler('heightType')}
                                     helperText="Please select the Height">
                                     {heights.map(option => (
                                         <MenuItem key={option.Id} value={option.Id}>
@@ -99,8 +93,8 @@ class AssemblyForm extends React.Component {
                                 <TextField
                                     select
                                     label="Stage"
-                                    value={stageType}
-                                    onChange={this.textFieldChangeHandler('stageType')}
+                                    value={stageType || 0}
+                                    onClick={onTextFieldChangeHandler('stageType')}
                                     helperText="Please select the stage"
                                 >
                                     {stages.map(option => (
@@ -114,21 +108,21 @@ class AssemblyForm extends React.Component {
                                     fullWidth
                                     className={classes.textField}
                                     value={dives}
-                                    onChange={this.textFieldChangeHandler('dives')}
+                                    onChange={onTextFieldChangeHandler('dives')}
                                 />
                                 <TextField
                                     label={"Number Of Execution Judges"}
                                     fullWidth
                                     className={classes.textField}
                                     value={numOfEJ}
-                                    onChange={this.textFieldChangeHandler('numOfEJ')}
+                                    onChange={onTextFieldChangeHandler('numOfEJ')}
                                 />
                                 <TextField
                                     label={"Number of Synchronization Judges"}
                                     fullWidth
                                     className={classes.textField}
                                     value={numOfSJ}
-                                    onChange={this.textFieldChangeHandler('numOfSJ')}
+                                    onChange={onTextFieldChangeHandler('numOfSJ')}
                                 />
                             </form>
                         </Paper>
@@ -136,7 +130,7 @@ class AssemblyForm extends React.Component {
                     <DialogActions>
                         <Button
                             color={'secondary'}
-                            onClick={submitHandler({ ...this.state.data.getWebServiceObject(), matchId: matchId })}>
+                            onClick={() => submitHandler()}>
                             Submit
                         </Button>
                         <Button color={'primary'} onClick={onCloseHandler}>Close</Button>

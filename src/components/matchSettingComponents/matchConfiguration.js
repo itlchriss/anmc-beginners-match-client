@@ -21,6 +21,7 @@ import DeleteIcon from '@material-ui/icons/Delete';
 import EditIcon from '@material-ui/icons/Edit';
 import MatchAssemblyList from "./matchConfigurationComponents/matchAssemblyList";
 import AssemblyForm from "./matchConfigurationComponents/assemblyForm";
+import Assembly from "../entities/assembly";
 
 const styles = theme => ({
 
@@ -33,7 +34,8 @@ class MatchConfigurationComponent extends React.Component {
             data: [],
             matchId: this.props.routeData.matchId,
             loading: true,
-            dialogOpen: false
+            dialogOpen: false,
+            assemblyContainer: new Assembly()
         };
         this.addAssemblyHandler = this.addAssemblyHandler.bind(this);
     }
@@ -64,12 +66,17 @@ class MatchConfigurationComponent extends React.Component {
                 this.setState({ loading: false });
             });
     }
-    addAssemblyHandler = (data) => {
+    addAssemblyHandler() {
         this.setState({ loading: true });
-        apiAddMatchAssembly(data)
-            .then(res => (res.status === 200 && res.data.rtnCode === 0) )
-            .then(result => !result ? alert('submit Failed'): this.refreshData());
-    };
+        apiAddMatchAssembly(this.state.assemblyContainer)
+            .then(res => console.log(res) && (res.status === 200 && res.data.rtnCode === 0) )
+            .then(result => (result && this.refreshData()) || alert('submit Failed'))
+            .catch(err => {
+                console.log(err);
+                alert(err);
+            })
+            .finally(() => this.setState({ loading: false }));
+    }
     render() {
         const { loading } = this.state;
         if (loading)
@@ -95,15 +102,26 @@ class MatchConfigurationComponent extends React.Component {
                     </Paper>
                     <Paper>
                         {/*<button onClick={() => goToComponent(6)}>Area/Code</button>*/}
-                        <Button variant={'outlined'} onClick={() => this.setState({dialogOpen: true})}>Add Match Assembly</Button>
+                        <Button
+                            variant={'outlined'}
+                            onClick={() =>
+                                this.setState({dialogOpen: true})}>Add Match Assembly</Button>
                         <button onClick={() => this.refreshData}>Refresh</button>
                     </Paper>
                     <MatchAssemblyList data={matchAssemblies} />
                     <AssemblyForm
                         open={dialogOpen}
                         onCloseHandler={() => this.setState({ dialogOpen: false })}
-                        submitHandler={() => this.addAssemblyHandler}
-                        parentData={this.state.data.match}
+                        onTextFieldChangeHandler={(fieldName) => (event) =>
+                            this.setState({
+                            assemblyContainer: {
+                                ...this.state.assemblyContainer,
+                                [fieldName]: event.target.value
+                            }
+                        })
+                        }
+                        submitHandler={this.addAssemblyHandler}
+                        data={this.state.assemblyContainer}
                         title={'New Assembly'}/>
                 </React.Fragment>
             );

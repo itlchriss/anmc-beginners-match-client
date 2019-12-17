@@ -8,8 +8,8 @@ let APIHost = 'http://localhost';
 let APIBase = '/ANMCApi/api';
 
 //for debeug
-// APIHost = DebugHost;
-// APIBase = DebugBase;
+APIHost = DebugHost;
+APIBase = DebugBase;
 //
 
 
